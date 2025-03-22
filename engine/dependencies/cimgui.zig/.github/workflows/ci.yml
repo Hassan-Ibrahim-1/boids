@@ -1,0 +1,70 @@
+name: ci
+
+on:
+  pull_request:
+    branches:
+      - trunk
+
+env:
+  ZIG_VERSION: "0.13.0"
+
+jobs:
+  examples:
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+    runs-on: "${{ matrix.os }}"
+    steps:
+    - uses: actions/checkout@v4
+    - uses: mlugg/setup-zig@v1
+      with:
+        version: ${{ env.ZIG_VERSION }}
+    - name: Test building examples
+      shell: bash
+      run: |
+        unset ZIG_LOCAL_CACHE_DIR
+        zig build --build-file "${GITHUB_WORKSPACE}/examples/build.zig"
+  build:
+    strategy:
+      matrix:
+        repo:
+          - spaceporn
+        os:
+          - ubuntu-latest
+          - windows-latest
+        zig_opts:
+          - ''
+          - '-Ddev'
+          - '-Dturbo'
+    runs-on: "${{ matrix.os }}"
+    steps:
+    - name: Setup Zig
+      uses: mlugg/setup-zig@v1
+      with:
+        version: ${{ env.ZIG_VERSION }}
+
+    - uses: actions/checkout@v4
+      with:
+        repository: "${{ github.repository_owner }}/${{ matrix.repo }}"
+
+    - name: Prepare ${{ matrix.repo }}/build.zig.zon
+      env:
+        SHA: "${{ github.event.pull_request.head.sha }}"
+        URL: "${{ github.server_url }}/${{ github.repository }}/archive"
+      shell: bash
+      run: |
+        old_url="$(grep -o "${URL}/.*\.tar\.gz" build.zig.zon)"
+        old_hash="$(zig fetch "${old_url}")"
+        new_url="${URL}/${SHA}.tar.gz"
+        new_hash="$(zig fetch "${new_url}")"
+        sed -i "s@${old_url}@${new_url}@;s@${old_hash}@${new_hash}@" build.zig.zon
+
+    - name: Test building ${{ matrix.repo }}
+      env:
+        OPTIONS: "${{ matrix.zig_opts }}"
+        RUNNER_TMP: "${{ runner.temp }}"
+      shell: bash
+      run:
+        zig build ${OPTIONS}

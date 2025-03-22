@@ -1,0 +1,7 @@
+.zig-cache
+.DS_Store
+zig-out
+app/zig-out
+engine/zig-out
+app/.zig-cache
+engine/.zig-cache
