@@ -34,6 +34,7 @@ const shapes = @import("shapes.zig");
 const Boid = @This();
 const Self = @This();
 
+allocator: Allocator,
 actor: *Actor,
 speed: f32,
 dir: Vec2,
@@ -52,8 +53,9 @@ pub fn init(allocator: Allocator, name: []const u8) Boid {
     };
     return Boid{
         .actor = actor,
-        .speed = 1.0,
+        .speed = 20,
         .dir = .init(0, 1.0),
+        .allocator = allocator,
     };
 }
 
@@ -67,7 +69,7 @@ pub fn drawDirectionRay(self: *Self) void {
 pub fn update(self: *Self) void {
     const tf = &self.actor.transform;
 
-    const adir = self.dir;
+    const dir = self.dir.normalized();
 
     tf.rotation.z = math.toDegrees(std.math.atan(dir.y / dir.x));
     if (dir.x < 0) {
@@ -75,8 +77,46 @@ pub fn update(self: *Self) void {
     } else {
         tf.rotation.z -= 90;
     }
+
+    const v = Vec3.fromVec2(dir.mulValue(self.speed));
+    tf.position = tf.position.add(v).mulValue(engine.deltaTime());
+
+    const min = Vec2.init(-1, -1);
+    const max = Vec2.init(1, 1);
+
+    if (tf.position.x <= min.x) {
+        tf.position.x = max.x;
+
+        self.dir = .random(-1, 1);
+    }
+
+    if (tf.position.y <= min.y) {
+        tf.position.y = max.y;
+
+        self.dir = .random(-1, 1);
+    }
+
+    if (tf.position.x >= max.x) {
+        tf.position.x = min.x;
+
+        self.dir = .random(-1, 1);
+    }
+
+    if (tf.position.y >= max.y) {
+        tf.position.y = min.y;
+
+        self.dir = .random(-1, 1);
+    }
 }
 
 pub fn addToImGui(self: *Self) void {
-    _ = ig.dragVec2Ex("boid dir", &self.dir, 0.01, null, null);
+    // TODO: this is horrible for performance
+    const name = engine.scene().getActorName(self.actor).?;
+    const dname = std.fmt.allocPrintZ(
+        self.allocator,
+        "{s} dir",
+        .{name},
+    ) catch unreachable;
+    defer self.allocator.free(dname);
+    _ = ig.dragVec2Ex(dname, &self.dir, 0.01, null, null);
 }

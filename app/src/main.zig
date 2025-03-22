@@ -35,9 +35,26 @@ const shapes = @import("shapes.zig");
 const Boid = @import("Boid.zig");
 
 const State = struct {
-    allocator: Allocator,
+    alloc: Allocator,
     boid_shader: Shader,
-    boid: Boid,
+    boids: ArrayList(Boid),
+    draw_direction_rays: bool,
+
+    pub fn init(self: *State) !void {
+        self.alloc = engine.allocator();
+        self.boids = .init(self.alloc);
+        self.draw_direction_rays = true;
+
+        self.boid_shader = try .init(
+            self.alloc,
+            "shaders/boid.vert",
+            "shaders/boid.frag",
+        );
+    }
+
+    pub fn deinit(self: *State) void {
+        self.boids.deinit();
+    }
 };
 
 var state: State = undefined;
@@ -46,32 +63,49 @@ fn init() !void {
     engine.camera().lock();
     engine.scene().setSkyboxHidden(true);
 
-    state.allocator = engine.allocator();
-    try shapes.init(state.allocator);
+    try state.init();
+    try shapes.init(state.alloc);
 
-    state.boid_shader = try .init(
-        state.allocator,
-        "shaders/boid.vert",
-        "shaders/boid.frag",
-    );
+    try createBoids();
+}
 
-    state.boid = .init(state.allocator, "boid");
-    state.boid.actor.render_item.material.shader = &state.boid_shader;
+fn createBoids() !void {
+    for (0..100) |i| {
+        const name = try std.fmt.allocPrint(state.alloc, "boid {}", .{i});
+        var boid = Boid.init(state.alloc, name);
+        boid.actor.render_item.material.shader = &state.boid_shader;
+        boid.actor.transform.position =
+            .init(math.randomF32(-1, 1), math.randomF32(-1, 1), 0);
+        try state.boids.append(boid);
+        defer state.alloc.free(name);
+    }
 }
 
 fn update() !void {
-    state.boid.update();
-    state.boid.drawDirectionRay();
-
     if (engine.cursorEnabled()) {
         ig.begin("boids");
         defer ig.end();
-        state.boid.addToImGui();
+
+        _ = ig.checkBox(
+            "draw direction rays",
+            &state.draw_direction_rays,
+        );
+    }
+    for (state.boids.items) |*boid| {
+        boid.update();
+        if (state.draw_direction_rays) {
+            boid.drawDirectionRay();
+        }
+
+        if (engine.cursorEnabled()) {
+            boid.addToImGui();
+        }
     }
 }
 
 fn deinit() void {
     shapes.deinit();
+    state.deinit();
 }
 
 pub fn main() !void {

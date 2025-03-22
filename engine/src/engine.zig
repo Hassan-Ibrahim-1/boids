@@ -335,12 +335,12 @@ pub fn run(user_app: *const Application) void {
     // TODO:
     // add a configuration option per actor for whether an actor created
     // in Application.init should save its data in the save file
-    editor.loadActorData(
-        fs.savePath("save.json"),
-    ) catch |err| switch (err) {
-        error.EmptyFile, error.FileNotFound => {},
-        else => unreachable,
-    };
+    // editor.loadActorData(
+    //     fs.savePath("save.json"),
+    // ) catch |err| switch (err) {
+    //     error.EmptyFile, error.FileNotFound => {},
+    //     else => unreachable,
+    // };
     editor.loadLightData(
         fs.savePath("light_save.json"),
     ) catch |err| switch (err) {

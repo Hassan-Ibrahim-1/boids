@@ -1,5 +1,5 @@
 const std = @import("std");
-const RandGen = std.rand.DefaultPrng;
+const RandGen = std.Random.DefaultPrng;
 const engine = @import("engine.zig");
 const Transform = engine.Transform;
 pub var rand = RandGen.init(0);
