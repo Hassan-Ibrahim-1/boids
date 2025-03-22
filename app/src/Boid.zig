@@ -67,7 +67,7 @@ pub fn drawDirectionRay(self: *Self) void {
 pub fn update(self: *Self) void {
     const tf = &self.actor.transform;
 
-    const dir = self.dir;
+    const adir = self.dir;
 
     tf.rotation.z = math.toDegrees(std.math.atan(dir.y / dir.x));
     if (dir.x < 0) {
