@@ -10,7 +10,8 @@ const renderer = engine.renderer;
 const Vec3 = math.Vec3;
 const Vec2 = math.Vec2;
 const Vec4 = math.Vec4;
-const Mat4 = engine.math.Mat4;
+const Mat4 = math.Mat4;
+const Ray = math.Ray;
 const fs = engine.fs;
 const Transform = engine.Transform;
 const Camera = engine.Camera;
@@ -37,6 +38,8 @@ const State = struct {
     boid_shader: Shader,
 };
 
+const ray = Ray.init(.init(0, -0.1, 0), .init(0.5, 0.2, 0));
+
 var state: State = undefined;
 
 fn init() !void {
@@ -56,7 +59,9 @@ fn init() !void {
     boid.actor.render_item.material.shader = &state.boid_shader;
 }
 
-fn update() !void {}
+fn update() !void {
+    renderer.drawRay(&ray, 1.0);
+}
 
 fn deinit() void {
     shapes.deinit();

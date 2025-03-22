@@ -1102,8 +1102,8 @@ pub const Ray = struct {
 
     pub fn init(origin: Vec3, direction: Vec3) Self {
         return .{
-            .origin = origin.*,
-            .direction = direction.*,
+            .origin = origin,
+            .direction = direction,
         };
     }
 

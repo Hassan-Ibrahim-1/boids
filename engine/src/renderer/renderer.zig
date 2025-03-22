@@ -9,6 +9,7 @@ const Allocator = std.mem.Allocator;
 const Actor = engine.Actor;
 const Camera = engine.Camera;
 const Shader = engine.Shader;
+const VertexBuffer = engine.VertexBuffer;
 const Mat4 = math.Mat4;
 const Material = engine.Material;
 const fs = engine.fs;
@@ -30,6 +31,7 @@ const Shaders = struct {
     light_textured_mesh: Shader,
     skybox: Shader,
     wireframe: Shader,
+    line: Shader,
 };
 
 const StringHashMap = std.StringHashMap;
@@ -121,6 +123,15 @@ fn initShaders() void {
         @panic("failed to load shader");
     };
     engine.addShader("wireframe", &state.shaders.wireframe);
+
+    state.shaders.line = Shader.init(
+        state.allocator,
+        fs.shaderPath("line.vert"),
+        fs.shaderPath("line.frag"),
+    ) catch {
+        @panic("failed to load shader");
+    };
+    engine.addShader("line", &state.shaders.wireframe);
 }
 
 pub fn deinitShaders() void {
@@ -401,4 +412,23 @@ pub fn getCameraMatrices() struct { proj: Mat4, view: Mat4 } {
         .proj = state.camera.getPerspectiveMatrix(),
         .view = state.camera.getViewMatrix(),
     };
+}
+
+pub fn drawRay(ray: *const math.Ray, t: f32) void {
+    const p1 = ray.origin;
+    const p2 = ray.at(t);
+
+    var vb = VertexBuffer.init(state.allocator);
+    defer vb.deinit();
+    vb.vertices.appendSlice(&.{
+        .fromPos(p1),
+        .fromPos(p2),
+    }) catch unreachable;
+    vb.sendVertexData();
+
+    vb.bind();
+    defer vb.unbind();
+
+    state.shaders.line.use();
+    gl.DrawArrays(gl.LINES, 0, 2);
 }
