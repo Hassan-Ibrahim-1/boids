@@ -37,6 +37,8 @@ velocity: Vec2,
 
 pub fn init(allocator: Allocator, name: []const u8) Boid {
     const actor = engine.scene().createActor(name);
+    actor.transform.scale = .init(0.02, 0.07, 1.0);
+
     const mesh = actor.render_item.createMesh();
     mesh.* = .fromVao(allocator, shapes.triangleVao());
     mesh.draw_command = .{

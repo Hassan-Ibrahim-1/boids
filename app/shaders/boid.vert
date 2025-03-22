@@ -7,5 +7,5 @@ layout(location = 2) in vec2 a_tex_coords;
 uniform mat4 model;
 
 void main() {
-    gl_Position = vec4(a_position, 1.0f);
+    gl_Position = model * vec4(a_position, 1.0f);
 }
