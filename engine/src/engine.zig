@@ -523,8 +523,7 @@ pub fn setCursorEnabled(b: bool) void {
     state.window.enableCursor(b);
 }
 
-/// pass in null if you want to switch to
-/// the default engine camera
+/// pass in null if you want to switch to the default engine camera
 pub fn setCamera(cam: ?*Camera) void {
     state.user_camera = cam;
 }

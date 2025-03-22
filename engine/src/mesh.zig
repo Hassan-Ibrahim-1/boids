@@ -92,13 +92,12 @@ pub const Mesh = struct {
         if (self.vertex_buffer.indices.items.len > 0) {
             dc.type = .draw_elements;
         } else {
-            log.info("draw arrays", .{});
             dc.type = .draw_arrays;
         }
         dc.mode = .triangles;
         dc.vertex_count = self
             .vertex_buffer
-            .indices
+            .vertices
             .items
             .len;
     }

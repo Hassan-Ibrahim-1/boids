@@ -1,6 +1,6 @@
 [
     {
-        "name": "test",
+        "name": "boid",
         "render_item": {
             "material": {
                 "color": {
@@ -15,14 +15,14 @@
         },
         "transform": {
             "position": {
-                "x": -4.000000059604645e-1,
+                "x": 0e0,
                 "y": 0e0,
                 "z": 0e0
             },
             "scale": {
-                "x": 5.300000190734863e0,
-                "y": 6e0,
-                "z": 4.099999904632568e0
+                "x": 1e0,
+                "y": 1e0,
+                "z": 1e0
             },
             "rotation": {
                 "x": 0e0,

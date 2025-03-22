@@ -184,16 +184,18 @@ pub fn renderActor(actor: *const Actor) void {
     const model = actor.transform.mat4();
     const scene = engine.scene();
     var shader: *Shader = undefined;
-    if (engine.wireframeEnabled()) {
-        shader = &state.shaders.wireframe;
-    } else if (mat.shader) |s| {
+    // if (engine.wireframeEnabled()) {
+    //     shader = &state.shaders.wireframe;
+    //     shader.use();
+    // } else
+    if (mat.shader) |s| {
         shader = s;
         shader.use();
     } else {
         if (scene.hasLights()) {
             if (mat.hasDiffuseTextures()) {
                 shader = &state.shaders.light_textured_mesh;
-                // calls shader.use
+                // sendLightData calls shader.use
                 sendLightData(shader);
                 sendTextureData(mat, shader);
                 shader.setMat3(

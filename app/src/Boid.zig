@@ -28,52 +28,25 @@ const ArrayList = std.ArrayList;
 const Bounds = math.Bounds;
 const Scene = engine.Scene;
 const PointLight = engine.PointLight;
-
 const shapes = @import("shapes.zig");
-const Boid = @import("Boid.zig");
 
-const State = struct {
-    allocator: Allocator,
-    boid_shader: Shader,
-};
+const Boid = @This();
 
-var state: State = undefined;
+actor: *Actor,
+velocity: Vec2,
 
-fn init() !void {
-    engine.camera().lock();
-    engine.scene().setSkyboxHidden(true);
-
-    state.allocator = engine.allocator();
-    try shapes.init(state.allocator);
-
-    state.boid_shader = try .init(
-        state.allocator,
-        "shaders/boid.vert",
-        "shaders/boid.frag",
-    );
-
-    var boid = Boid.init(state.allocator, "boid");
-    boid.actor.render_item.material.shader = &state.boid_shader;
-}
-
-fn update() !void {}
-
-fn deinit() void {
-    shapes.deinit();
-}
-
-pub fn main() !void {
-    try engine.init(&.{
-        // .width = 1200,
-        // .height = 680,
-        .width = 3840,
-        .height = 2160,
-        .name = "App",
-    });
-    defer engine.deinit();
-    engine.run(&.{
-        .init = init,
-        .update = update,
-        .deinit = deinit,
-    });
+pub fn init(allocator: Allocator, name: []const u8) Boid {
+    const actor = engine.scene().createActor(name);
+    const mesh = actor.render_item.createMesh();
+    mesh.* = .fromVao(allocator, shapes.triangleVao());
+    mesh.draw_command = .{
+        .mode = .triangles,
+        .type = .draw_arrays,
+        .vertex_count = 3,
+        .instance_count = 0,
+    };
+    return Boid{
+        .actor = actor,
+        .velocity = .zero,
+    };
 }

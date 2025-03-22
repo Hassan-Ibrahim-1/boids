@@ -73,7 +73,10 @@ pub fn unbind(self: *const VertexBuffer) void {
 /// position must be at 0
 /// normal at 1
 /// tex coords at 2
+/// does nothing if vertices are empty
 pub fn sendVertexData(self: *VertexBuffer) void {
+    if (self.vertices.items.len == 0) return;
+
     if (self.vao == null) {
         self.vao = 0;
         gl.GenVertexArrays(1, @ptrCast(&self.vao.?));
@@ -121,7 +124,10 @@ pub fn sendVertexData(self: *VertexBuffer) void {
 }
 
 /// reallocates the ebo
+/// does nothing if indices is empty
 pub fn sendIndexData(self: *VertexBuffer) void {
+    if (self.indices.items.len == 0) return;
+
     if (self.vao == null) {
         self.vao = 0;
         gl.GenVertexArrays(1, @ptrCast(&self.vao.?));

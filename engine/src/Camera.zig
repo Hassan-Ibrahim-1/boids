@@ -39,7 +39,7 @@ far: f32 = 100.0,
 /// Don't mutate this
 reset_look_back: bool = false,
 /// Don't mutate this
-locked: bool = false,
+_locked: bool = false,
 
 pub fn init(world_up: Vec3) Camera {
     var camera = Camera{
@@ -83,7 +83,7 @@ pub fn updateVectors(self: *Camera) void {
 }
 
 pub fn processKeyboard(self: *Camera, dir: Direction, delta_time: f32) void {
-    if (self.locked) return;
+    if (self._locked) return;
     const vertical_multiplier = 1.0;
     const speed = self.speed * delta_time;
 
@@ -104,7 +104,7 @@ pub fn processMouseMovement(
     constrain_pitch: bool,
     invert_pitch: bool,
 ) void {
-    if (self.locked) {
+    if (self._locked) {
         return;
     }
 
@@ -131,4 +131,12 @@ pub fn processMouseMovement(
 pub fn processMouseScroll(self: *Camera, y_offset: f32) void {
     self.fov -= y_offset;
     self.fov = std.math.clamp(self.fov, 45.0, 100.0);
+}
+
+pub fn lock(self: *Camera) void {
+    self._locked = true;
+}
+
+pub fn unlock(self: *Camera) void {
+    self._locked = false;
 }
