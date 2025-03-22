@@ -34,9 +34,10 @@ const shapes = @import("shapes.zig");
 const Boid = @This();
 const Self = @This();
 
+pub var speed: f32 = 1.0;
+
 allocator: Allocator,
 actor: *Actor,
-speed: f32,
 dir: Vec2,
 
 pub fn init(allocator: Allocator, name: []const u8) Boid {
@@ -53,7 +54,6 @@ pub fn init(allocator: Allocator, name: []const u8) Boid {
     };
     return Boid{
         .actor = actor,
-        .speed = 20,
         .dir = .init(0, 1.0),
         .allocator = allocator,
     };
@@ -78,8 +78,8 @@ pub fn update(self: *Self) void {
         tf.rotation.z -= 90;
     }
 
-    const v = Vec3.fromVec2(dir.mulValue(self.speed));
-    tf.position = tf.position.add(v).mulValue(engine.deltaTime());
+    const v = Vec3.fromVec2(dir.mulValue(speed)).mulValue(engine.deltaTime());
+    tf.position = tf.position.add(v);
 
     const min = Vec2.init(-1, -1);
     const max = Vec2.init(1, 1);

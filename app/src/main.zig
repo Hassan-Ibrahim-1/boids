@@ -86,10 +86,12 @@ fn update() !void {
         ig.begin("boids");
         defer ig.end();
 
+        _ = ig.dragFloatEx("boid speed", &Boid.speed, 0.01, null, null);
         _ = ig.checkBox(
             "draw direction rays",
             &state.draw_direction_rays,
         );
+        ig.spacing();
     }
     for (state.boids.items) |*boid| {
         boid.update();
