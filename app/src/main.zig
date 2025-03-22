@@ -29,6 +29,7 @@ const ArrayList = std.ArrayList;
 const Bounds = math.Bounds;
 const Scene = engine.Scene;
 const PointLight = engine.PointLight;
+const ig = engine.ig;
 
 const shapes = @import("shapes.zig");
 const Boid = @import("Boid.zig");
@@ -36,9 +37,8 @@ const Boid = @import("Boid.zig");
 const State = struct {
     allocator: Allocator,
     boid_shader: Shader,
+    boid: Boid,
 };
-
-const ray = Ray.init(.init(0, -0.1, 0), .init(0.5, 0.2, 0));
 
 var state: State = undefined;
 
@@ -55,12 +55,19 @@ fn init() !void {
         "shaders/boid.frag",
     );
 
-    var boid = Boid.init(state.allocator, "boid");
-    boid.actor.render_item.material.shader = &state.boid_shader;
+    state.boid = .init(state.allocator, "boid");
+    state.boid.actor.render_item.material.shader = &state.boid_shader;
 }
 
 fn update() !void {
-    renderer.drawRay(&ray, 1.0);
+    state.boid.update();
+    state.boid.drawDirectionRay();
+
+    if (engine.cursorEnabled()) {
+        ig.begin("boids");
+        defer ig.end();
+        state.boid.addToImGui();
+    }
 }
 
 fn deinit() void {

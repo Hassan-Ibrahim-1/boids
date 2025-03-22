@@ -9,7 +9,7 @@ pub var triangle: Mesh = undefined;
 pub fn init(allocator: std.mem.Allocator) !void {
     triangle = .init(allocator);
     try triangle.vertex_buffer.vertices.appendSlice(&.{
-        .fromPos(.init(0.0, 0.5, 0.0)), // Top vertex (x, y, z)
+        .fromPos(.init(0.0, 0.7, 0.0)), // Top vertex (x, y, z)
         .fromPos(.init(-0.5, -0.5, 0.0)), // Bottom-left vertex (x, y, z)
         .fromPos(.init(0.5, -0.5, 0.0)), // Bottom-right vertex (x, y, z)
     });

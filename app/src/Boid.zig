@@ -4,6 +4,7 @@ const debug = engine.debug;
 const log = debug.log;
 const utils = engine.utils;
 const Shader = engine.Shader;
+const ig = engine.ig;
 const ComputeShader = engine.ComputeShader;
 const ComputeTexture = engine.ComputeTexture;
 const renderer = engine.renderer;
@@ -31,13 +32,15 @@ const PointLight = engine.PointLight;
 const shapes = @import("shapes.zig");
 
 const Boid = @This();
+const Self = @This();
 
 actor: *Actor,
-velocity: Vec2,
+speed: f32,
+dir: Vec2,
 
 pub fn init(allocator: Allocator, name: []const u8) Boid {
     const actor = engine.scene().createActor(name);
-    actor.transform.scale = .init(0.02, 0.07, 1.0);
+    actor.transform.scale = .init(0.02, 0.03, 1.0);
 
     const mesh = actor.render_item.createMesh();
     mesh.* = .fromVao(allocator, shapes.triangleVao());
@@ -49,6 +52,31 @@ pub fn init(allocator: Allocator, name: []const u8) Boid {
     };
     return Boid{
         .actor = actor,
-        .velocity = .zero,
+        .speed = 1.0,
+        .dir = .init(0, 1.0),
     };
+}
+
+pub fn drawDirectionRay(self: *Self) void {
+    const dir = self.dir;
+    const ray = math.Ray.init(self.actor.transform.position, .fromVec2(dir));
+    log.info("pos: {any}, dir: {any}", .{ self.actor.transform.position, dir });
+    renderer.drawRay(&ray, 0.1);
+}
+
+pub fn update(self: *Self) void {
+    const tf = &self.actor.transform;
+
+    const dir = self.dir;
+
+    tf.rotation.z = math.toDegrees(std.math.atan(dir.y / dir.x));
+    if (dir.x < 0) {
+        tf.rotation.z += 90;
+    } else {
+        tf.rotation.z -= 90;
+    }
+}
+
+pub fn addToImGui(self: *Self) void {
+    _ = ig.dragVec2Ex("boid dir", &self.dir, 0.01, null, null);
 }
