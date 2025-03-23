@@ -21,7 +21,8 @@ const shapes = @import("shapes.zig");
 const Boid = @This();
 const Self = Boid;
 
-pub var speed: f32 = 1.0;
+pub var speed: f32 = 0.37;
+pub var detection_radius: f32 = 0.12;
 
 allocator: Allocator,
 actor: *Actor,
@@ -106,4 +107,20 @@ pub fn addToImGui(self: *Self) void {
     ) catch unreachable;
     defer self.allocator.free(dname);
     _ = ig.dragVec2Ex(dname, &self.dir, 0.01, null, null);
+}
+
+pub fn highlightNeighbours(
+    self: *Self,
+    boids: ArrayList(Boid),
+) void {
+    const pos: Vec2 = .fromVec3(self.actor.transform.position);
+    for (boids.items) |*boid| {
+        if (boid.actor.id == self.actor.id) continue;
+        const p: Vec2 = .fromVec3(boid.actor.transform.position);
+        if (utils.pointInCircle(p, pos, detection_radius)) {
+            boid.actor.render_item.material.color = .init(58, 121, 222);
+        } else {
+            boid.actor.render_item.material.color = .white;
+        }
+    }
 }

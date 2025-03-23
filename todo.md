@@ -1,3 +1,9 @@
+# boids
+detect neighbouring boids.
+make an editor for this to make sure it works.
+select a boid and highlight its neighbours
+
+
 shader storage buffers
 convert opengl stuff to dsa
 

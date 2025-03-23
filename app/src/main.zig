@@ -79,6 +79,7 @@ fn createBoids() !void {
         try state.boids.append(boid);
         defer state.alloc.free(name);
     }
+    state.boids.items[0].actor.render_item.material.color = .red;
 }
 
 fn update() !void {
@@ -86,7 +87,20 @@ fn update() !void {
         ig.begin("boids");
         defer ig.end();
 
-        _ = ig.dragFloatEx("boid speed", &Boid.speed, 0.01, null, null);
+        _ = ig.dragFloatEx(
+            "boid speed",
+            &Boid.speed,
+            0.01,
+            null,
+            null,
+        );
+        _ = ig.dragFloatEx(
+            "detection radius",
+            &Boid.detection_radius,
+            0.01,
+            null,
+            null,
+        );
         _ = ig.checkBox(
             "draw direction rays",
             &state.draw_direction_rays,
@@ -98,11 +112,9 @@ fn update() !void {
         if (state.draw_direction_rays) {
             boid.drawDirectionRay();
         }
-
-        if (engine.cursorEnabled()) {
-            boid.addToImGui();
-        }
     }
+    const boid = &state.boids.items[0];
+    boid.highlightNeighbours(state.boids);
 }
 
 fn deinit() void {
