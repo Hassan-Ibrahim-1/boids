@@ -23,8 +23,9 @@ const shapes = @import("shapes.zig");
 const Boid = @This();
 const Self = Boid;
 
-pub var speed: f32 = 0.01;
+pub var speed: f32 = 0.37;
 pub var detection_radius: f32 = 0.12;
+pub var center_factor: f32 = 0.5;
 
 allocator: Allocator,
 actor: *Actor,
@@ -61,7 +62,17 @@ pub fn drawDirectionRay(self: *Self) void {
 pub fn update(self: *Self, boids: []Boid) void {
     const tf = &self.actor.transform;
 
-    self.dir = self.dir.sub(self.centerOfNeighbours(boids));
+    // boid.vx += (xpos_avg - boid.x)*centeringfactor
+    // boid.vy += (ypos_avg - boid.y)*centeringfactor
+
+    const center = self.centerOfNeighbours(boids);
+    self.dir.x += (center.x - tf.position.x) * center_factor;
+    self.dir.y += (center.y - tf.position.y) * center_factor;
+    self.dir = self.dir.normalized();
+
+    if (self.dir.length() > 0) {
+        self.dir = self.dir.normalized();
+    }
     const dir = self.dir;
 
     tf.rotation.z = math.toDegrees(std.math.atan(dir.y / dir.x));
@@ -116,11 +127,12 @@ fn centerOfNeighbours(self: *Self, boids: []Boid) Vec2 {
     for (boids) |*boid| {
         if (self.isNeighbour(boid)) {
             v = v.add(
-                .fromVec3(boid.actor.transform.position),
+                Vec2.fromVec3(boid.actor.transform.position),
             );
             neighbour_count += 1;
         }
     }
+    if (neighbour_count == 0) return self.dir;
     v = v.divValue(@floatFromInt(neighbour_count));
 
     log.info("v: {any}", .{v});
