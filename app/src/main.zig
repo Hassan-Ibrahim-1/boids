@@ -97,6 +97,7 @@ fn update() !void {
         _ = ig.dragFloatEx("boid speed", &Boid.speed, 0.01, null, null);
         _ = ig.dragFloatEx("detection radius", &Boid.detection_radius, 0.01, null, null);
         _ = ig.dragFloatEx("center factor", &Boid.center_factor, 0.01, null, null);
+        _ = ig.dragFloatEx("avoid factor", &Boid.avoid_factor, 0.01, null, null);
         _ = ig.checkBox("draw direction rays", &state.draw_direction_rays);
 
         const speed = 1;

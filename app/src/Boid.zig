@@ -26,6 +26,7 @@ const Self = Boid;
 pub var speed: f32 = 0.37;
 pub var detection_radius: f32 = 0.12;
 pub var center_factor: f32 = 0.5;
+pub var avoid_factor: f32 = 0.2;
 
 allocator: Allocator,
 actor: *Actor,
@@ -65,10 +66,13 @@ pub fn update(self: *Self, boids: []Boid) void {
     // boid.vx += (xpos_avg - boid.x)*centeringfactor
     // boid.vy += (ypos_avg - boid.y)*centeringfactor
 
-    const center = self.centerOfNeighbours(boids);
-    self.dir.x += (center.x - tf.position.x) * center_factor;
-    self.dir.y += (center.y - tf.position.y) * center_factor;
-    self.dir = self.dir.normalized();
+    // const center = self.centerOfNeighbours(boids);
+    // self.dir.x += (center.x - tf.position.x) * center_factor;
+    // self.dir.y += (center.y - tf.position.y) * center_factor;
+    //
+    self.dir = self.dir.add(
+        self.avoidNeighbours(boids).mulValue(avoid_factor),
+    );
 
     if (self.dir.length() > 0) {
         self.dir = self.dir.normalized();
@@ -119,6 +123,20 @@ fn averageDirection(self: *Self, boids: []Boid) Vec2 {
     }
     if (v.nearZero()) return self.dir;
     return v.divValue(@floatFromInt(neighbour_count)).normalized();
+}
+
+fn avoidNeighbours(self: *Self, boids: []Boid) Vec2 {
+    var v = Vec3.zero;
+    var neighbour_count: usize = 0;
+    const p1 = self.actor.transform.position;
+    for (boids) |*boid| {
+        if (self.isNeighbour(boid)) {
+            const p2 = boid.actor.transform.position;
+            v = v.add(p1.sub(p2));
+            neighbour_count += 1;
+        }
+    }
+    return .fromVec3(v);
 }
 
 fn centerOfNeighbours(self: *Self, boids: []Boid) Vec2 {
