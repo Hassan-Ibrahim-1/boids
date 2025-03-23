@@ -1,6 +1,7 @@
 const std = @import("std");
 const engine = @import("engine");
 const debug = engine.debug;
+const assert = debug.assert;
 const log = debug.log;
 const utils = engine.utils;
 const Shader = engine.Shader;
@@ -42,7 +43,7 @@ pub fn init(allocator: Allocator, name: []const u8) Boid {
     };
     return Boid{
         .actor = actor,
-        .dir = .init(0, 1.0),
+        .dir = .random(-1, 1),
         .allocator = allocator,
     };
 }
@@ -50,14 +51,14 @@ pub fn init(allocator: Allocator, name: []const u8) Boid {
 pub fn drawDirectionRay(self: *Self) void {
     const dir = self.dir;
     const ray = math.Ray.init(self.actor.transform.position, .fromVec2(dir));
-    log.info("pos: {any}, dir: {any}", .{ self.actor.transform.position, dir });
+    // log.info("pos: {any}, dir: {any}", .{ self.actor.transform.position, dir });
     renderer.drawRay(&ray, 0.1);
 }
 
-pub fn update(self: *Self) void {
+pub fn update(self: *Self, boids: []Boid) void {
     const tf = &self.actor.transform;
 
-    const dir = self.dir.normalized();
+    const dir = self.averageDirection(boids);
 
     tf.rotation.z = math.toDegrees(std.math.atan(dir.y / dir.x));
     if (dir.x < 0) {
@@ -74,27 +75,35 @@ pub fn update(self: *Self) void {
 
     if (tf.position.x <= min.x) {
         tf.position.x = max.x;
-
-        self.dir = .random(-1, 1);
+        // self.dir.x = -self.dir.x;
+    } else if (tf.position.x >= max.x) {
+        tf.position.x = min.x;
+        // self.dir.x = -self.dir.x;
     }
 
     if (tf.position.y <= min.y) {
         tf.position.y = max.y;
-
-        self.dir = .random(-1, 1);
-    }
-
-    if (tf.position.x >= max.x) {
-        tf.position.x = min.x;
-
-        self.dir = .random(-1, 1);
-    }
-
-    if (tf.position.y >= max.y) {
+        // self.dir.y = -self.dir.y;
+    } else if (tf.position.y >= max.y) {
         tf.position.y = min.y;
-
-        self.dir = .random(-1, 1);
+        // self.dir.y = -self.dir.y;
     }
+
+    assert(!std.math.isNan(tf.position.x), "x is nan", .{});
+    assert(!std.math.isNan(tf.position.y), "y is nan", .{});
+}
+
+fn averageDirection(self: *Self, boids: []Boid) Vec2 {
+    var v = Vec2.zero;
+    var neighbour_count: usize = 0;
+    for (boids) |*boid| {
+        if (self.isNeighbour(boid)) {
+            v = v.add(boid.dir);
+            neighbour_count += 1;
+        }
+    }
+    if (v.nearZero()) return self.dir;
+    return v.divValue(@floatFromInt(neighbour_count)).normalized();
 }
 
 pub fn addToImGui(self: *Self) void {
@@ -111,16 +120,22 @@ pub fn addToImGui(self: *Self) void {
 
 pub fn highlightNeighbours(
     self: *Self,
-    boids: ArrayList(Boid),
+    boids: []Boid,
 ) void {
-    const pos: Vec2 = .fromVec3(self.actor.transform.position);
-    for (boids.items) |*boid| {
+    for (boids) |*boid| {
         if (boid.actor.id == self.actor.id) continue;
-        const p: Vec2 = .fromVec3(boid.actor.transform.position);
-        if (utils.pointInCircle(p, pos, detection_radius)) {
+        if (self.isNeighbour(boid)) {
             boid.actor.render_item.material.color = .init(58, 121, 222);
         } else {
             boid.actor.render_item.material.color = .white;
         }
     }
+}
+
+fn isNeighbour(self: *Self, boid: *Boid) bool {
+    return utils.pointInCircle(
+        .fromVec3(boid.actor.transform.position),
+        .fromVec3(self.actor.transform.position),
+        detection_radius,
+    );
 }

@@ -1,4 +1,5 @@
 const std = @import("std");
+const assert = engine.debug.assert;
 const RandGen = std.Random.DefaultPrng;
 const engine = @import("engine.zig");
 const Transform = engine.Transform;
@@ -627,6 +628,7 @@ pub const Vec4 = extern struct {
     }
 
     pub fn normalized(self: Vec4) Vec4 {
+        assert(self.length() != 0, "length is zero. would lead to division by zero", .{});
         return self.divValue(self.length());
     }
 
@@ -855,6 +857,7 @@ pub const Vec3 = extern struct {
     }
 
     pub fn normalized(self: Vec3) Vec3 {
+        assert(self.length() != 0, "length is zero. would lead to division by zero", .{});
         return self.divValue(self.length());
     }
 
@@ -1023,6 +1026,7 @@ pub const Vec2 = extern struct {
     // }
 
     pub fn normalized(self: Vec2) Vec2 {
+        assert(self.length() != 0, "length is zero. would lead to division by zero", .{});
         return self.divValue(self.length());
     }
 

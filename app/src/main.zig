@@ -77,7 +77,7 @@ fn init() !void {
 }
 
 fn createBoids() !void {
-    for (0..200) |i| {
+    for (0..400) |i| {
         const name = try std.fmt.allocPrint(state.alloc, "boid {}", .{i});
         var boid = Boid.init(state.alloc, name);
         boid.actor.render_item.material.shader = &state.boid_shader;
@@ -121,13 +121,13 @@ fn update() !void {
         ig.spacing();
     }
     for (state.boids.items) |*boid| {
-        boid.update();
+        boid.update(state.boids.items);
         if (state.draw_direction_rays) {
             boid.drawDirectionRay();
         }
     }
     const boid = &state.boids.items[@intCast(state.selected_boid)];
-    boid.highlightNeighbours(state.boids);
+    boid.highlightNeighbours(state.boids.items);
 }
 
 fn deinit() void {
