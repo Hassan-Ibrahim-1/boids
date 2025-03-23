@@ -26,7 +26,8 @@ const Self = Boid;
 pub var speed: f32 = 0.37;
 pub var detection_radius: f32 = 0.12;
 pub var center_factor: f32 = 0.5;
-pub var avoid_factor: f32 = 120;
+pub var avoid_factor: f32 = 0.12;
+pub var matching_factor: f32 = 0.5;
 
 allocator: Allocator,
 actor: *Actor,
@@ -63,16 +64,17 @@ pub fn drawDirectionRay(self: *Self) void {
 pub fn update(self: *Self, boids: []Boid) void {
     const tf = &self.actor.transform;
 
-    // boid.vx += (xpos_avg - boid.x)*centeringfactor
-    // boid.vy += (ypos_avg - boid.y)*centeringfactor
+    const center = self.centerOfNeighbours(boids);
+    self.dir.x += (center.x - tf.position.x) * center_factor;
+    self.dir.y += (center.y - tf.position.y) * center_factor;
 
-    // const center = self.centerOfNeighbours(boids);
-    // self.dir.x += (center.x - tf.position.x) * center_factor;
-    // self.dir.y += (center.y - tf.position.y) * center_factor;
-    //
     self.dir = self.dir.add(
-        self.avoidNeighbours(boids).mulValue(avoid_factor * engine.deltaTime()),
+        self.avoidNeighbours(boids).mulValue(avoid_factor),
     );
+
+    const avgdir = self.averageDirection(boids);
+    self.dir.x += (avgdir.x - self.dir.x) * matching_factor;
+    self.dir.y += (avgdir.y - self.dir.y) * matching_factor;
 
     if (self.dir.length() > 0) {
         self.dir = self.dir.normalized();

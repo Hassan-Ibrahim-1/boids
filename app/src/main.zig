@@ -98,6 +98,7 @@ fn update() !void {
         _ = ig.dragFloatEx("detection radius", &Boid.detection_radius, 0.01, null, null);
         _ = ig.dragFloatEx("center factor", &Boid.center_factor, 0.01, null, null);
         _ = ig.dragFloatEx("avoid factor", &Boid.avoid_factor, 0.01, null, null);
+        _ = ig.dragFloatEx("matching factor", &Boid.matching_factor, 0.01, null, null);
         _ = ig.checkBox("draw direction rays", &state.draw_direction_rays);
 
         const speed = 1;
@@ -131,11 +132,11 @@ fn update() !void {
     const boid = &state.boids.items[@intCast(state.selected_boid)];
     boid.highlightNeighbours(state.boids.items);
 
-    const tf: Transform = .{
-        .position = .fromVec2(boid.dir.normalized()),
-        .scale = .init(0.05, 0.1, 0),
-    };
-    renderer.drawQuad(&tf, .green);
+    // const tf: Transform = .{
+    //     .position = .fromVec2(boid.dir.normalized()),
+    //     .scale = .init(0.05, 0.1, 0),
+    // };
+    // renderer.drawQuad(&tf, .green);
 }
 
 fn deinit() void {
