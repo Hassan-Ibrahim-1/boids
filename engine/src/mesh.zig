@@ -9,6 +9,7 @@ const ArrayList = std.ArrayList;
 const Vertex = @import("vertex.zig").Vertex;
 const Allocator = std.mem.Allocator;
 const VertexBuffer = @import("VertexBuffer.zig");
+const assert = engine.debug.assert;
 
 pub const DrawCommandType = enum {
     draw_arrays,
@@ -87,6 +88,12 @@ pub const Mesh = struct {
 
     /// don't call this if you created your mesh using fromVao
     pub fn createDrawCommand(self: *Mesh) void {
+        assert(
+            self.vertex_buffer.vertices.items.len > 0,
+            "Mesh must have vertices to create a draw command",
+            .{},
+        );
+
         self.draw_command = undefined;
         var dc = &self.draw_command.?;
         if (self.vertex_buffer.indices.items.len > 0) {

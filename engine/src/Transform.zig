@@ -5,10 +5,10 @@ const Mat4 = math.Mat4;
 
 const Transform = @This();
 
-position: Vec3 = Vec3.zero,
-scale: Vec3 = Vec3.fromValue(1),
+position: Vec3 = .zero,
+scale: Vec3 = .fromValue(1),
 /// should be in degrees
-rotation: Vec3 = Vec3.zero,
+rotation: Vec3 = .zero,
 
 ///
 pub fn initMinimum() Transform {

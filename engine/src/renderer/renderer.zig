@@ -19,6 +19,7 @@ const math = engine.math;
 const Mat3 = math.Mat3;
 const Skybox = engine.Skybox;
 const Model = engine.Model;
+const Transform = engine.Transform;
 
 // When adding a shader
 // add it to the Shaders struct
@@ -41,7 +42,8 @@ const State = struct {
     shaders: Shaders,
     camera: *Camera,
     user_shaders: *StringHashMap(*Shader),
-    cube: Model,
+    cube_model: Model,
+    rect_mesh: Mesh,
 };
 
 var state: State = undefined;
@@ -59,15 +61,44 @@ pub fn deinit() void {
 }
 
 pub fn initModels() void {
-    state.cube = Model.init(
+    state.cube_model = Model.init(
         state.allocator,
         fs.modelPath("cube.glb"),
     );
-    log.info("succesfully loaded cube model data", .{});
+    initRect();
+}
+
+const Vertex = engine.Vertex;
+fn initRect() void {
+    const vertices = [_]Vertex{
+        .fromPos(.init(0.5, 0.5, 0)),
+        .fromPos(.init(0.5, -0.5, 0)),
+        .fromPos(.init(-0.5, -0.5, 0)),
+        .fromPos(.init(-0.5, 0.5, 0)),
+    };
+
+    const indices = [_]u32{
+        0, 1, 3,
+        1, 2, 3,
+    };
+
+    state.rect_mesh = .init(state.allocator);
+    state
+        .rect_mesh
+        .vertex_buffer
+        .vertices
+        .appendSlice(vertices[0..]) catch unreachable;
+    state
+        .rect_mesh
+        .vertex_buffer
+        .indices
+        .appendSlice(indices[0..]) catch unreachable;
+    state.rect_mesh.createDrawCommand();
+    state.rect_mesh.sendData();
 }
 
 pub fn deinitModels() void {
-    state.cube.deinit();
+    state.cube_model.deinit();
 }
 
 fn initShaders() void {
@@ -395,7 +426,7 @@ fn renderSkybox(skybox: *Skybox) void {
     gl.DepthFunc(gl.LEQUAL);
     defer gl.DepthFunc(gl.LESS);
 
-    const mesh = state.cube.meshes.items[0];
+    const mesh = state.cube_model.meshes.items[0];
     renderMesh(&mesh);
 
     if (engine.wireframeEnabled()) {
@@ -404,7 +435,11 @@ fn renderSkybox(skybox: *Skybox) void {
 }
 
 pub fn cubeModel() *Model {
-    return &state.cube;
+    return &state.cube_model;
+}
+
+pub fn rectMesh() *Mesh {
+    return &state.rect_mesh;
 }
 
 pub fn getCameraMatrices() struct { proj: Mat4, view: Mat4 } {
@@ -431,4 +466,13 @@ pub fn drawRay(ray: *const math.Ray, t: f32) void {
 
     state.shaders.line.use();
     gl.DrawArrays(gl.LINES, 0, 2);
+}
+
+const Color = engine.Color;
+pub fn drawQuad(tf: *const Transform, color: Color) void {
+    const shader = &state.shaders.basic_mesh;
+    shader.use();
+    shader.setMat4("model", &tf.mat4());
+    shader.setVec3("material.color", color.clampedVec3());
+    renderMesh(&state.rect_mesh);
 }

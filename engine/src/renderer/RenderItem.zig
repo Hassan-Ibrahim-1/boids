@@ -17,8 +17,8 @@ hidden: bool,
 pub fn init(allocator: Allocator) RenderItem {
     return RenderItem{
         .allocator = allocator,
-        .material = Material.init(allocator),
-        .meshes = ArrayList(Mesh).init(allocator),
+        .material = .init(allocator),
+        .meshes = .init(allocator),
         .hidden = false,
     };
 }

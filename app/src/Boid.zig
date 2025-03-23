@@ -1,4 +1,5 @@
 const std = @import("std");
+const Transform = engine.Transform;
 const engine = @import("engine");
 const debug = engine.debug;
 const assert = debug.assert;
@@ -22,7 +23,7 @@ const shapes = @import("shapes.zig");
 const Boid = @This();
 const Self = Boid;
 
-pub var speed: f32 = 0.37;
+pub var speed: f32 = 0.01;
 pub var detection_radius: f32 = 0.12;
 
 allocator: Allocator,
@@ -58,7 +59,8 @@ pub fn drawDirectionRay(self: *Self) void {
 pub fn update(self: *Self, boids: []Boid) void {
     const tf = &self.actor.transform;
 
-    const dir = self.averageDirection(boids);
+    self.dir = self.dir.sub(self.centerOfNeighbours(boids));
+    const dir = self.dir;
 
     tf.rotation.z = math.toDegrees(std.math.atan(dir.y / dir.x));
     if (dir.x < 0) {
@@ -104,6 +106,29 @@ fn averageDirection(self: *Self, boids: []Boid) Vec2 {
     }
     if (v.nearZero()) return self.dir;
     return v.divValue(@floatFromInt(neighbour_count)).normalized();
+}
+
+fn centerOfNeighbours(self: *Self, boids: []Boid) Vec2 {
+    var v = Vec2.zero;
+    var neighbour_count: usize = 0;
+    for (boids) |*boid| {
+        if (self.isNeighbour(boid)) {
+            v = v.add(
+                .fromVec3(boid.actor.transform.position),
+            );
+            neighbour_count += 1;
+        }
+    }
+    v = v.divValue(@floatFromInt(neighbour_count)).normalized();
+
+    const tf: Transform = .{
+        .position = .fromVec2(v),
+        .scale = Vec3.fromValue(1),
+    };
+    renderer.drawQuad(&tf, .green);
+
+    log.info("v: {any}", .{v});
+    return v;
 }
 
 pub fn addToImGui(self: *Self) void {
