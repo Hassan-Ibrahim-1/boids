@@ -121,12 +121,6 @@ fn centerOfNeighbours(self: *Self, boids: []Boid) Vec2 {
     }
     v = v.divValue(@floatFromInt(neighbour_count)).normalized();
 
-    const tf: Transform = .{
-        .position = .fromVec2(v),
-        .scale = Vec3.fromValue(1),
-    };
-    renderer.drawQuad(&tf, .green);
-
     log.info("v: {any}", .{v});
     return v;
 }

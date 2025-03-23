@@ -47,7 +47,7 @@ const State = struct {
         return State{
             .alloc = alloc,
             .boids = .init(alloc),
-            .draw_direction_rays = true,
+            .draw_direction_rays = false,
             .selected_boid = 0,
             .previous_boid = 0,
 
@@ -128,6 +128,12 @@ fn update() !void {
     }
     const boid = &state.boids.items[@intCast(state.selected_boid)];
     boid.highlightNeighbours(state.boids.items);
+
+    const tf: Transform = .{
+        .position = .fromVec2(boid.dir.normalized()),
+        .scale = Vec3.fromValue(0.1),
+    };
+    renderer.drawQuad(&tf, .green);
 }
 
 fn deinit() void {
