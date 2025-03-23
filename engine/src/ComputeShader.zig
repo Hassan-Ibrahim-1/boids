@@ -15,7 +15,7 @@ const Shader = @import("Shader.zig");
 
 const ComputeShader = @This();
 
-pub const ShaderError = Shader.ShaderError;
+pub const Error = Shader.Error;
 
 allocator: Allocator,
 /// Don't mutate this
@@ -25,7 +25,7 @@ compute_path: []const u8,
 pub fn init(
     allocator: Allocator,
     compute_path: []const u8,
-) ShaderError!ComputeShader {
+) Error!ComputeShader {
     const id = gl.CreateProgram();
     try loadShader(allocator, id, compute_path, gl.COMPUTE_SHADER);
     try linkProgram(id);
@@ -64,7 +64,7 @@ fn loadShader(
     id: c_uint,
     path: []const u8,
     typ: comptime_int,
-) ShaderError!void {
+) Error!void {
     const shader = gl.CreateShader(typ);
     defer gl.DeleteShader(shader);
 
@@ -88,7 +88,7 @@ fn loadShader(
     gl.AttachShader(id, shader);
 }
 
-fn linkProgram(shader: c_uint) ShaderError!void {
+fn linkProgram(shader: c_uint) Error!void {
     gl.LinkProgram(shader);
     var success: c_int = 0;
     gl.GetProgramiv(shader, gl.LINK_STATUS, &success);
@@ -106,7 +106,7 @@ fn linkProgram(shader: c_uint) ShaderError!void {
 
 fn checkShaderCompilationSuccess(
     shader: c_uint,
-) ShaderError!void {
+) Error!void {
     var success: c_int = 0;
     gl.GetShaderiv(shader, gl.COMPILE_STATUS, &success);
     if (success == gl.FALSE) {

@@ -39,17 +39,24 @@ const State = struct {
     boid_shader: Shader,
     boids: ArrayList(Boid),
     draw_direction_rays: bool,
+    selected_boid: i32,
+    previous_boid: i32,
 
-    pub fn init(self: *State) !void {
-        self.alloc = engine.allocator();
-        self.boids = .init(self.alloc);
-        self.draw_direction_rays = true;
+    pub fn init() !State {
+        const alloc = engine.allocator();
+        return State{
+            .alloc = alloc,
+            .boids = .init(alloc),
+            .draw_direction_rays = true,
+            .selected_boid = 0,
+            .previous_boid = 0,
 
-        self.boid_shader = try .init(
-            self.alloc,
-            "shaders/boid.vert",
-            "shaders/boid.frag",
-        );
+            .boid_shader = try .init(
+                alloc,
+                "shaders/boid.vert",
+                "shaders/boid.frag",
+            ),
+        };
     }
 
     pub fn deinit(self: *State) void {
@@ -63,7 +70,7 @@ fn init() !void {
     engine.camera().lock();
     engine.scene().setSkyboxHidden(true);
 
-    try state.init();
+    state = try .init();
     try shapes.init(state.alloc);
 
     try createBoids();
@@ -87,24 +94,30 @@ fn update() !void {
         ig.begin("boids");
         defer ig.end();
 
-        _ = ig.dragFloatEx(
-            "boid speed",
-            &Boid.speed,
-            0.01,
-            null,
-            null,
-        );
-        _ = ig.dragFloatEx(
-            "detection radius",
-            &Boid.detection_radius,
-            0.01,
-            null,
-            null,
-        );
-        _ = ig.checkBox(
-            "draw direction rays",
-            &state.draw_direction_rays,
-        );
+        _ = ig.dragFloatEx("boid speed", &Boid.speed, 0.01, null, null);
+        _ = ig.dragFloatEx("detection radius", &Boid.detection_radius, 0.01, null, null);
+        _ = ig.checkBox("draw direction rays", &state.draw_direction_rays);
+
+        const speed = 1;
+        const min = 0;
+        const max =
+            @as(i32, @intCast(state.boids.items.len)) - 1;
+        if (ig.dragIntEx(
+            "selected boid",
+            &state.selected_boid,
+            speed,
+            min,
+            max,
+        )) {
+            const b =
+                state.boids.items[@intCast(state.selected_boid)].actor;
+            b.render_item.material.color = .red;
+
+            const pb =
+                state.boids.items[@intCast(state.previous_boid)].actor;
+            pb.render_item.material.color = .white;
+            state.previous_boid = state.selected_boid;
+        }
         ig.spacing();
     }
     for (state.boids.items) |*boid| {
@@ -113,7 +126,7 @@ fn update() !void {
             boid.drawDirectionRay();
         }
     }
-    const boid = &state.boids.items[0];
+    const boid = &state.boids.items[@intCast(state.selected_boid)];
     boid.highlightNeighbours(state.boids);
 }
 

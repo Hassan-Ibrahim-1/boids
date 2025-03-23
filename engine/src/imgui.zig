@@ -81,18 +81,18 @@ pub fn dragIntEx(
     name: [:0]const u8,
     i: *i32,
     speed: f32,
-    vmin: ?f32,
-    vmax: ?f32,
+    vmin: ?i32,
+    vmax: ?i32,
 ) bool {
     const min = blk: {
         if (vmin != null) break :blk vmin.?;
-        break :blk std.math.floatMin(f32);
+        break :blk std.math.minInt(i32);
     };
     const max = blk: {
         if (vmax != null) break :blk vmax.?;
-        break :blk std.math.floatMax(f32);
+        break :blk std.math.maxInt(i32);
     };
-    return ig.igDragFloatEx(
+    return ig.igDragIntEx(
         @ptrCast(name),
         @ptrCast(i),
         speed,

@@ -1,7 +1,8 @@
 # boids
-detect neighbouring boids.
-make an editor for this to make sure it works.
+-- detect neighbouring boids.
+-- make an editor for this to make sure it works.
 select a boid and highlight its neighbours
+    * selected boid index?
 
 
 shader storage buffers

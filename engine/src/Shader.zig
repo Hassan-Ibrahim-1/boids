@@ -19,7 +19,7 @@ id: c_uint,
 vertex_path: []const u8,
 fragment_path: []const u8,
 
-pub const ShaderError = error{
+pub const Error = error{
     CompileError,
     LinkError,
 } || std.fs.File.OpenError;
@@ -28,7 +28,7 @@ pub fn init(
     allocator: Allocator,
     vertex_path: []const u8,
     fragment_path: []const u8,
-) ShaderError!Shader {
+) Error!Shader {
     const id = gl.CreateProgram();
     try loadShader(allocator, id, vertex_path, gl.VERTEX_SHADER);
     try loadShader(allocator, id, fragment_path, gl.FRAGMENT_SHADER);
@@ -65,7 +65,7 @@ fn loadShader(
     id: c_uint,
     path: []const u8,
     typ: comptime_int,
-) ShaderError!void {
+) Error!void {
     const shader = gl.CreateShader(typ);
     defer gl.DeleteShader(shader);
 
@@ -91,7 +91,7 @@ fn loadShader(
 
 fn checkShaderCompilationSuccess(
     shader: c_uint,
-) ShaderError!void {
+) Error!void {
     var success: c_int = 0;
     gl.GetShaderiv(shader, gl.COMPILE_STATUS, &success);
     if (success == gl.FALSE) {
@@ -105,7 +105,7 @@ fn checkShaderCompilationSuccess(
     }
 }
 
-fn linkProgram(shader: c_uint) ShaderError!void {
+fn linkProgram(shader: c_uint) Error!void {
     gl.LinkProgram(shader);
     var success: c_int = 0;
     gl.GetProgramiv(shader, gl.LINK_STATUS, &success);
