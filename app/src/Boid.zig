@@ -26,7 +26,7 @@ const Self = Boid;
 pub var speed: f32 = 0.37;
 pub var detection_radius: f32 = 0.12;
 pub var center_factor: f32 = 0.5;
-pub var avoid_factor: f32 = 0.2;
+pub var avoid_factor: f32 = 120;
 
 allocator: Allocator,
 actor: *Actor,
@@ -71,7 +71,7 @@ pub fn update(self: *Self, boids: []Boid) void {
     // self.dir.y += (center.y - tf.position.y) * center_factor;
     //
     self.dir = self.dir.add(
-        self.avoidNeighbours(boids).mulValue(avoid_factor),
+        self.avoidNeighbours(boids).mulValue(avoid_factor * engine.deltaTime()),
     );
 
     if (self.dir.length() > 0) {
