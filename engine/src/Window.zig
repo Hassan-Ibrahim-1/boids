@@ -6,6 +6,7 @@ const glfw = engine.glfw;
 const input = engine.input;
 const Key = input.Key;
 const Action = input.Action;
+const log = engine.debug.log.Scoped(.Window);
 const builtin = @import("builtin");
 
 const Window = @This();
@@ -52,7 +53,6 @@ pub fn init(
         monitor,
         null,
     ) orelse return error.GlfwInitfailed;
-
     // // center window
     // var monitor_width: i32 = 0;
     // var monitor_height: i32 = 0;
@@ -85,7 +85,7 @@ pub fn init(
 
     glfw.glfwFocusWindow(window);
 
-    engine.debug.log.info(
+    log.info(
         "creating window of size: {}, {}",
         .{ width, height },
     );

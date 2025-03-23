@@ -64,7 +64,7 @@ const Vec2 = math.Vec2;
 const std = @import("std");
 const builtin = @import("builtin");
 const Allocator = std.mem.Allocator;
-const GPA = std.heap.DebugAllocator(.{});
+const GPA = std.heap.DebugAllocator(.{ .safety = true });
 const ArrayList = std.ArrayList;
 
 pub const Application = struct {
@@ -140,6 +140,7 @@ pub fn deinit() void {
     // deinit window after everything that requires opengl
     state.window.deinit();
     glfw.glfwTerminate();
+    std.debug.assert(!state.gpa.detectLeaks());
     std.debug.assert(state.gpa.deinit() == .ok);
 }
 
@@ -356,7 +357,7 @@ pub fn run(user_app: *const Application) void {
 }
 
 fn initAllocator() void {
-    state.gpa = GPA{};
+    state.gpa = GPA.init;
     state.allocator = state.gpa.allocator();
     state.allocator = std.heap.smp_allocator;
 }

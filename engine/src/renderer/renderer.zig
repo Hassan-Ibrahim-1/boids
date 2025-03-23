@@ -99,6 +99,7 @@ fn initRect() void {
 
 pub fn deinitModels() void {
     state.cube_model.deinit();
+    state.rect_mesh.deinit();
 }
 
 fn initShaders() void {

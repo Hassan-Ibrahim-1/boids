@@ -102,11 +102,19 @@ pub const Mesh = struct {
             dc.type = .draw_arrays;
         }
         dc.mode = .triangles;
-        dc.vertex_count = self
-            .vertex_buffer
-            .vertices
-            .items
-            .len;
+        if (self.vertex_buffer.indices.items.len == 0) {
+            dc.vertex_count = self
+                .vertex_buffer
+                .vertices
+                .items
+                .len;
+        } else {
+            dc.vertex_count = self
+                .vertex_buffer
+                .indices
+                .items
+                .len;
+        }
     }
 
     pub fn buffersCreated(self: *const Mesh) bool {
