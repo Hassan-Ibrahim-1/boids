@@ -70,7 +70,7 @@ fn init() !void {
 }
 
 fn createBoids() !void {
-    for (0..100) |i| {
+    for (0..200) |i| {
         const name = try std.fmt.allocPrint(state.alloc, "boid {}", .{i});
         var boid = Boid.init(state.alloc, name);
         boid.actor.render_item.material.shader = &state.boid_shader;

@@ -5,34 +5,21 @@ const log = debug.log;
 const utils = engine.utils;
 const Shader = engine.Shader;
 const ig = engine.ig;
-const ComputeShader = engine.ComputeShader;
-const ComputeTexture = engine.ComputeTexture;
 const renderer = engine.renderer;
 const Vec3 = math.Vec3;
 const Vec2 = math.Vec2;
-const Vec4 = math.Vec4;
-const Mat4 = engine.math.Mat4;
-const fs = engine.fs;
-const Transform = engine.Transform;
-const Camera = engine.Camera;
-const VertexBuffer = engine.VertexBuffer;
 const Color = engine.Color;
-const Vertex = engine.Vertex;
 const Mesh = engine.Mesh;
-const Texture = engine.Texture;
 const Actor = engine.Actor;
-const Model = engine.Model;
 const math = engine.math;
-const gl = engine.gl;
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const Bounds = math.Bounds;
 const Scene = engine.Scene;
-const PointLight = engine.PointLight;
 const shapes = @import("shapes.zig");
 
 const Boid = @This();
-const Self = @This();
+const Self = Boid;
 
 pub var speed: f32 = 1.0;
 
