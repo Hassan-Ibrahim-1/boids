@@ -51,8 +51,10 @@ pub fn init(allocator: Allocator, name: []const u8) Boid {
 
 pub fn drawDirectionRay(self: *Self) void {
     const dir = self.dir;
-    const ray = math.Ray.init(self.actor.transform.position, .fromVec2(dir));
-    // log.info("pos: {any}, dir: {any}", .{ self.actor.transform.position, dir });
+    const ray = math.Ray.init(
+        self.actor.transform.position,
+        .fromVec2(dir),
+    );
     renderer.drawRay(&ray, 0.1);
 }
 
@@ -119,7 +121,7 @@ fn centerOfNeighbours(self: *Self, boids: []Boid) Vec2 {
             neighbour_count += 1;
         }
     }
-    v = v.divValue(@floatFromInt(neighbour_count)).normalized();
+    v = v.divValue(@floatFromInt(neighbour_count));
 
     log.info("v: {any}", .{v});
     return v;
