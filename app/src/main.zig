@@ -80,13 +80,13 @@ fn createBoids() !void {
     for (0..400) |i| {
         const name = try std.fmt.allocPrint(state.alloc, "boid {}", .{i});
         var boid = Boid.init(state.alloc, name);
-        boid.actor.render_item.material.shader = &state.boid_shader;
-        boid.actor.transform.position =
+        boid.material.shader = &state.boid_shader;
+        boid.transform.position =
             .init(math.randomF32(-1, 1), math.randomF32(-1, 1), 0);
         try state.boids.append(boid);
         defer state.alloc.free(name);
     }
-    state.boids.items[0].actor.render_item.material.color = .red;
+    state.boids.items[0].material.color = .red;
 }
 
 fn update() !void {
@@ -113,12 +113,12 @@ fn update() !void {
             max,
         )) {
             const b =
-                state.boids.items[@intCast(state.selected_boid)].actor;
-            b.render_item.material.color = .red;
+                &state.boids.items[@intCast(state.selected_boid)];
+            b.material.color = .red;
 
             const pb =
-                state.boids.items[@intCast(state.previous_boid)].actor;
-            pb.render_item.material.color = .white;
+                &state.boids.items[@intCast(state.previous_boid)];
+            pb.material.color = .white;
             state.previous_boid = state.selected_boid;
         }
         ig.spacing();

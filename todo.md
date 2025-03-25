@@ -1,9 +1,14 @@
 # boids
 -- detect neighbouring boids.
 -- make an editor for this to make sure it works.
-select a boid and highlight its neighbours
-    * selected boid index?
 
+optimize:
+    instance the triangles
+    divide the area up into grids to not check against everything
+
+be able to check collision against rects? fire rays in every direction?
+turn this into a compute shader
+could also use the grid method to optimize
 
 shader storage buffers
 convert opengl stuff to dsa
@@ -22,8 +27,6 @@ instancing? would have to:
     - send model matrices
     - send color data
     - send texture data
-
-# HAVE TO DO THIS
 
 Culled mesher. look for adjacent voxels
 and don't draw a side if there is a voxel neighbouring it on that side

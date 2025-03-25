@@ -14,6 +14,7 @@ const Color = engine.Color;
 const Mesh = engine.Mesh;
 const Actor = engine.Actor;
 const math = engine.math;
+const Material = engine.Material;
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const Bounds = math.Bounds;
@@ -29,40 +30,40 @@ pub var center_factor: f32 = 0.5;
 pub var avoid_factor: f32 = 0.12;
 pub var matching_factor: f32 = 0.5;
 
+var _gen_id: u32 = 0;
+fn generateId() u32 {
+    _gen_id += 1;
+    return _gen_id - 1;
+}
+
 allocator: Allocator,
-actor: *Actor,
+transform: Transform,
+material: Material,
 dir: Vec2,
+id: u32,
 
 pub fn init(allocator: Allocator, name: []const u8) Boid {
-    const actor = engine.scene().createActor(name);
-    actor.transform.scale = .init(0.02, 0.03, 1.0);
-
-    const mesh = actor.render_item.createMesh();
-    mesh.* = .fromVao(allocator, shapes.triangleVao());
-    mesh.draw_command = .{
-        .mode = .triangles,
-        .type = .draw_arrays,
-        .vertex_count = 3,
-        .instance_count = 0,
-    };
+    _ = name; // autofix
     return Boid{
-        .actor = actor,
+        .transform = .{ .scale = .init(0.02, 0.03, 1.0) },
+        .material = .init(allocator),
         .dir = .random(-1, 1),
         .allocator = allocator,
+        .id = generateId(),
     };
 }
 
 pub fn drawDirectionRay(self: *Self) void {
     const dir = self.dir;
     const ray = math.Ray.init(
-        self.actor.transform.position,
+        self.transform.position,
         .fromVec2(dir),
     );
     renderer.drawRay(&ray, 0.1);
 }
 
 pub fn update(self: *Self, boids: []Boid) void {
-    const tf = &self.actor.transform;
+    const tf = &self.transform;
 
     const center = self.centerOfNeighbours(boids);
     self.dir.x += (center.x - tf.position.x) * center_factor;
@@ -130,10 +131,10 @@ fn averageDirection(self: *Self, boids: []Boid) Vec2 {
 fn avoidNeighbours(self: *Self, boids: []Boid) Vec2 {
     var v = Vec3.zero;
     var neighbour_count: usize = 0;
-    const p1 = self.actor.transform.position;
+    const p1 = self.transform.position;
     for (boids) |*boid| {
         if (self.isNeighbour(boid)) {
-            const p2 = boid.actor.transform.position;
+            const p2 = boid.transform.position;
             v = v.add(p1.sub(p2));
             neighbour_count += 1;
         }
@@ -147,7 +148,7 @@ fn centerOfNeighbours(self: *Self, boids: []Boid) Vec2 {
     for (boids) |*boid| {
         if (self.isNeighbour(boid)) {
             v = v.add(
-                Vec2.fromVec3(boid.actor.transform.position),
+                Vec2.fromVec3(boid.transform.position),
             );
             neighbour_count += 1;
         }
@@ -160,15 +161,14 @@ fn centerOfNeighbours(self: *Self, boids: []Boid) Vec2 {
 }
 
 pub fn addToImGui(self: *Self) void {
-    // TODO: this is horrible for performance
-    const name = engine.scene().getActorName(self.actor).?;
-    const dname = std.fmt.allocPrintZ(
-        self.allocator,
-        "{s} dir",
-        .{name},
-    ) catch unreachable;
-    defer self.allocator.free(dname);
-    _ = ig.dragVec2Ex(dname, &self.dir, 0.01, null, null);
+    _ = self; // autofix
+    // const dname = std.fmt.allocPrintZ(
+    //     self.allocator,
+    //     "{s} dir",
+    //     .{name},
+    // ) catch unreachable;
+    // defer self.allocator.free(dname);
+    // _ = ig.dragVec2Ex(dname, &self.dir, 0.01, null, null);
 }
 
 pub fn highlightNeighbours(
@@ -176,19 +176,19 @@ pub fn highlightNeighbours(
     boids: []Boid,
 ) void {
     for (boids) |*boid| {
-        if (boid.actor.id == self.actor.id) continue;
+        if (boid.id == self.id) continue;
         if (self.isNeighbour(boid)) {
-            boid.actor.render_item.material.color = .init(58, 121, 222);
+            boid.material.color = .init(58, 121, 222);
         } else {
-            boid.actor.render_item.material.color = .white;
+            boid.material.color = .white;
         }
     }
 }
 
 fn isNeighbour(self: *Self, boid: *Boid) bool {
     return utils.pointInCircle(
-        .fromVec3(boid.actor.transform.position),
-        .fromVec3(self.actor.transform.position),
+        .fromVec3(boid.transform.position),
+        .fromVec3(self.transform.position),
         detection_radius,
     );
 }
