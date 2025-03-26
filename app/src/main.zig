@@ -33,6 +33,7 @@ const ig = engine.ig;
 
 const shapes = @import("shapes.zig");
 const Boid = @import("Boid.zig");
+const boid_renderer = @import("boid_renderer.zig");
 
 const State = struct {
     alloc: Allocator,
@@ -61,6 +62,8 @@ const State = struct {
 
     pub fn deinit(self: *State) void {
         self.boids.deinit();
+        self.boid_shader.deinit();
+        boid_renderer.deinit();
     }
 };
 
@@ -72,8 +75,8 @@ fn init() !void {
 
     state = try .init();
     try shapes.init(state.alloc);
-
     try createBoids();
+    try boid_renderer.init(state.alloc, &state.boids);
 }
 
 fn createBoids() !void {
@@ -137,6 +140,8 @@ fn update() !void {
     //     .scale = .init(0.05, 0.1, 0),
     // };
     // renderer.drawQuad(&tf, .green);
+
+    boid_renderer.render();
 }
 
 fn deinit() void {

@@ -156,7 +156,6 @@ fn centerOfNeighbours(self: *Self, boids: []Boid) Vec2 {
     if (neighbour_count == 0) return self.dir;
     v = v.divValue(@floatFromInt(neighbour_count));
 
-    log.info("v: {any}", .{v});
     return v;
 }
 

@@ -1,13 +1,9 @@
 #version 460 core
 
-struct Material {
-    vec3 color;
-};
-
 out vec4 FragColor;
 
-uniform Material material;
+in vec3 color;
 
 void main() {
-    FragColor = vec4(material.color, 1.0);
+    FragColor = vec4(color, 1.0);
 }
