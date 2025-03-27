@@ -90,7 +90,7 @@ fn createBoids() !void {
         var boid = Boid.init(state.alloc, name);
         boid.material.shader = &state.boid_shader;
         boid.transform.position =
-            .init(math.randomFloat(f32, -1, 1), math.randomFloat(f32, -1, 1), 0);
+            .fromVec2(state.grid.randomCell().randomPos());
         try state.boids.append(boid);
         defer state.alloc.free(name);
     }

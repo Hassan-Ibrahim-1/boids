@@ -30,6 +30,14 @@ const Self = Grid;
 pub const Cell = struct {
     tf: Transform,
     boids: ArrayListUnmanaged(*Boid),
+
+    pub fn randomPos(self: *Cell) Vec2 {
+        const pos = &self.tf.position;
+        const scale = &self.tf.scale;
+        const x = math.randomFloat(f32, pos.x, pos.x + scale.x / 2.0);
+        const y = math.randomFloat(f32, pos.y, pos.y + scale.y / 2.0);
+        return .init(x, y);
+    }
 };
 
 transform: Transform,
@@ -113,5 +121,6 @@ pub fn render(self: *Self) void {
 }
 
 pub fn randomCell(self: *Self) *Cell {
-    self.cells.items.len;
+    const idx = math.randomInt(usize, 0, self.cells.items.len);
+    return &self.cells.items[idx];
 }

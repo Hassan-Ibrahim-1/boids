@@ -3,7 +3,8 @@ const assert = engine.debug.assert;
 const RandGen = std.Random.DefaultPrng;
 const engine = @import("engine.zig");
 const Transform = engine.Transform;
-pub var rand = RandGen.init(0);
+var r = RandGen.init(0);
+pub var rand = r.random();
 const c = @cImport({
     @cInclude("stb_perlin.h");
 });
@@ -31,20 +32,16 @@ pub fn toDegrees(rad: f32) f32 {
     return rad * (180.0 / pi);
 }
 
-pub fn randomFloat01(T: type) T {
-    return rand.random().float(T);
+fn randomFloat01(T: type) T {
+    return rand.float(T);
 }
 
 pub fn randomFloat(T: type, min: T, max: T) T {
     return min + (max - min) * randomFloat01(T);
 }
 
-pub fn randomInt01(T: type) T {
-    return rand.random().int(T);
-}
-
 pub fn randomInt(T: type, min: T, max: T) T {
-    return min + (max - min) * randomInt01(T);
+    return rand.intRangeAtMost(T, min, max - 1);
 }
 
 pub const Bounds = struct {
