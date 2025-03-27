@@ -31,13 +31,20 @@ pub fn toDegrees(rad: f32) f32 {
     return rad * (180.0 / pi);
 }
 
-/// returns an f32 between 0 and 1
-pub fn randomF32Clamped() f32 {
-    return rand.random().float(f32);
+pub fn randomFloat01(T: type) T {
+    return rand.random().float(T);
 }
 
-pub fn randomF32(min: f32, max: f32) f32 {
-    return min + (max - min) * randomF32Clamped();
+pub fn randomFloat(T: type, min: T, max: T) T {
+    return min + (max - min) * randomFloat01(T);
+}
+
+pub fn randomInt01(T: type) T {
+    return rand.random().int(T);
+}
+
+pub fn randomInt(T: type, min: T, max: T) T {
+    return min + (max - min) * randomInt01(T);
 }
 
 pub const Bounds = struct {
@@ -58,14 +65,14 @@ pub const Bounds = struct {
 
     pub fn randF32(bounds: *const Bounds) Vec3 {
         return Vec3.init(
-            randomF32(bounds.x, bounds.x + bounds.width),
+            randomFloat(f32, bounds.x, bounds.x + bounds.width),
             0.0,
-            randomF32(bounds.y, bounds.y + bounds.height),
+            randomFloat(f32, bounds.y, bounds.y + bounds.height),
         );
         //
         // const point = Vec2.init(
-        //     math.randomF32(bounds.x, bounds.x + bounds.width),
-        //     math.randomF32(bounds.y, bounds.y + bounds.height),
+        //     math.randomFloat(f32, bounds.x, bounds.x + bounds.width),
+        //     math.randomFloat(f32, bounds.y, bounds.y + bounds.height),
         // );
         // const normalizedX = 2.0 * (point.x / 1280) - 1.0;
         // const normalizedY = 2.0 * (point.y / 720) - 1.0;
@@ -643,18 +650,18 @@ pub const Vec4 = extern struct {
 
     pub fn randomClamped() Vec4 {
         return Vec4.init(
-            randomF32Clamped(),
-            randomF32Clamped(),
-            randomF32Clamped(),
-            randomF32Clamped(),
+            randomFloat01(f32),
+            randomFloat01(f32),
+            randomFloat01(f32),
+            randomFloat01(f32),
         );
     }
 
     pub fn random(min: f32, max: f32) Vec4 {
         return Vec4.init(
-            randomF32(min, max),
-            randomF32(min, max),
-            randomF32Clamped(),
+            randomFloat(f32, min, max),
+            randomFloat(f32, min, max),
+            randomFloat01(f32),
         );
     }
 
@@ -871,17 +878,17 @@ pub const Vec3 = extern struct {
 
     pub fn randomClamped() Vec3 {
         return Vec3.init(
-            randomF32Clamped(),
-            randomF32Clamped(),
-            randomF32Clamped(),
+            randomFloat01(f32),
+            randomFloat01(f32),
+            randomFloat01(f32),
         );
     }
 
     pub fn random(min: f32, max: f32) Vec3 {
         return Vec3.init(
-            randomF32(min, max),
-            randomF32(min, max),
-            randomF32(min, max),
+            randomFloat(f32, min, max),
+            randomFloat(f32, min, max),
+            randomFloat(f32, min, max),
         );
     }
 
@@ -1039,15 +1046,15 @@ pub const Vec2 = extern struct {
 
     pub fn randomClamped() Vec2 {
         return Vec2.init(
-            randomF32Clamped(),
-            randomF32Clamped(),
+            randomFloat01(f32),
+            randomFloat01(f32),
         );
     }
 
     pub fn random(min: f32, max: f32) Vec2 {
         return Vec2.init(
-            randomF32(min, max),
-            randomF32(min, max),
+            randomFloat(f32, min, max),
+            randomFloat(f32, min, max),
         );
     }
 

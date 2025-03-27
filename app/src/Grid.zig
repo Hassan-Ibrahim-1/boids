@@ -105,9 +105,13 @@ pub fn deinit(self: *Self) void {
     self.cells.deinit();
 }
 
-pub fn render(self: *Grid) void {
+pub fn render(self: *Self) void {
     for (self.cells.items) |*cell| {
         renderer.drawQuad(&cell.tf, .white, false);
         // log.info("tf: {any}", .{cell.tf});
     }
+}
+
+pub fn randomCell(self: *Self) *Cell {
+    self.cells.items.len;
 }

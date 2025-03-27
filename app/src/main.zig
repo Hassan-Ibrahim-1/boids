@@ -53,7 +53,9 @@ const State = struct {
             .draw_direction_rays = false,
             .selected_boid = 0,
             .previous_boid = 0,
-            .grid = try .init(alloc, &.{}, 100),
+            .grid = try .init(alloc, &.{
+                .scale = .init(2, 2, 1),
+            }, 100),
 
             .boid_shader = try .init(
                 alloc,
@@ -88,7 +90,7 @@ fn createBoids() !void {
         var boid = Boid.init(state.alloc, name);
         boid.material.shader = &state.boid_shader;
         boid.transform.position =
-            .init(math.randomF32(-1, 1), math.randomF32(-1, 1), 0);
+            .init(math.randomFloat(f32, -1, 1), math.randomFloat(f32, -1, 1), 0);
         try state.boids.append(boid);
         defer state.alloc.free(name);
     }
