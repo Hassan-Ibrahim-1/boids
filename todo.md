@@ -3,8 +3,11 @@
 -- make an editor for this to make sure it works.
 
 optimize:
-    instance the triangles
-    divide the area up into grids to not check against everything
+    -- instance the triangles
+    divide the area up into grids to optimize neighbour search
+        render a grid
+        divide boids up into cells
+        check for boids in current and neighbouring cells
 
 be able to check collision against rects? fire rays in every direction?
 turn this into a compute shader

@@ -470,10 +470,26 @@ pub fn drawRay(ray: *const math.Ray, t: f32) void {
 }
 
 const Color = engine.Color;
-pub fn drawQuad(tf: *const Transform, color: Color) void {
+pub fn drawQuad(
+    tf: *const Transform,
+    color: Color,
+    fill: bool,
+) void {
     const shader = &state.shaders.basic_mesh;
     shader.use();
     shader.setMat4("model", &tf.mat4());
     shader.setVec3("material.color", color.clampedVec3());
+
+    const dc = &state.rect_mesh.draw_command.?;
+    if (fill) {
+        dc.mode = .triangles;
+        dc.type = .draw_elements;
+        dc.vertex_count = 6;
+    } else {
+        dc.mode = .line_loop;
+        dc.type = .draw_arrays;
+        dc.vertex_count = 4;
+    }
+
     renderMesh(&state.rect_mesh);
 }

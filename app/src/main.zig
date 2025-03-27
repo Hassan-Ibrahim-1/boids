@@ -34,6 +34,7 @@ const ig = engine.ig;
 const shapes = @import("shapes.zig");
 const Boid = @import("Boid.zig");
 const boid_renderer = @import("boid_renderer.zig");
+const Grid = @import("Grid.zig");
 
 const State = struct {
     alloc: Allocator,
@@ -42,6 +43,7 @@ const State = struct {
     draw_direction_rays: bool,
     selected_boid: i32,
     previous_boid: i32,
+    grid: Grid,
 
     pub fn init() !State {
         const alloc = engine.allocator();
@@ -51,6 +53,7 @@ const State = struct {
             .draw_direction_rays = false,
             .selected_boid = 0,
             .previous_boid = 0,
+            .grid = try .init(alloc, &.{}, 100),
 
             .boid_shader = try .init(
                 alloc,
@@ -63,7 +66,7 @@ const State = struct {
     pub fn deinit(self: *State) void {
         self.boids.deinit();
         self.boid_shader.deinit();
-        boid_renderer.deinit();
+        self.grid.deinit();
     }
 };
 
@@ -139,14 +142,17 @@ fn update() !void {
     //     .position = .fromVec2(boid.dir.normalized()),
     //     .scale = .init(0.05, 0.1, 0),
     // };
-    // renderer.drawQuad(&tf, .green);
+    // renderer.drawQuad(&tf, .green, false);
+
+    state.grid.render();
 
     boid_renderer.render();
 }
 
 fn deinit() void {
-    shapes.deinit();
     state.deinit();
+    shapes.deinit();
+    boid_renderer.deinit();
 }
 
 pub fn main() !void {
@@ -163,4 +169,5 @@ pub fn main() !void {
         .update = update,
         .deinit = deinit,
     });
+    log.info("TERMINATED", .{});
 }
