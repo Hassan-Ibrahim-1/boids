@@ -87,12 +87,12 @@ fn init() !void {
 fn createBoids() !void {
     for (0..400) |i| {
         const name = try std.fmt.allocPrint(state.alloc, "boid {}", .{i});
+        defer state.alloc.free(name);
         var boid = Boid.init(state.alloc, name);
         boid.material.shader = &state.boid_shader;
         boid.transform.position =
             .fromVec2(state.grid.randomCell().randomPos());
         try state.boids.append(boid);
-        defer state.alloc.free(name);
     }
     state.boids.items[0].material.color = .red;
 }
@@ -101,6 +101,7 @@ fn update() !void {
     if (engine.cursorEnabled()) {
         ig.begin("boids");
         defer ig.end();
+        ig.fpsCounter();
 
         _ = ig.dragFloatEx("boid speed", &Boid.speed, 0.01, null, null);
         _ = ig.dragFloatEx("detection radius", &Boid.detection_radius, 0.01, null, null);
@@ -146,6 +147,7 @@ fn update() !void {
     // };
     // renderer.drawQuad(&tf, .green, false);
 
+    state.grid.update(boid);
     state.grid.render();
 
     boid_renderer.render();

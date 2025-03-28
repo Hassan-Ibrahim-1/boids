@@ -45,8 +45,8 @@ pub fn init() void {
 
 pub fn update() void {
     if (engine.cursorEnabled()) {
-        createActorListWindow();
-        createLightListWindow();
+        // createActorListWindow();
+        // createLightListWindow();
     }
 }
 

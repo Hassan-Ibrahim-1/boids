@@ -38,11 +38,31 @@ pub const Cell = struct {
         const y = math.randomFloat(f32, pos.y, pos.y + scale.y / 2.0);
         return .init(x, y);
     }
+
+    pub fn contains(self: *Cell, p: Vec3) bool {
+        const pos = &self.tf.position;
+        const scale = &self.tf.scale;
+
+        const left_x = pos.x - scale.x / 2.0;
+        const right_x = pos.x + scale.x / 2.0;
+        const up_y = pos.y + scale.y / 2.0;
+        const down_y = pos.y - scale.y / 2.0;
+
+        if (!(p.x >= left_x and p.x < right_x)) {
+            return false;
+        }
+        if (!(p.y >= down_y and p.y < up_y)) {
+            return false;
+        }
+        return true;
+    }
 };
 
 transform: Transform,
 alloc: Allocator,
 cells: ArrayList(Cell),
+cols: usize,
+rows: usize,
 
 pub fn init(
     alloc: Allocator,
@@ -98,11 +118,12 @@ pub fn init(
         cell_tf.position.x = original_xpos;
         cell_tf.position.y -= cell_tf.scale.y;
     }
-
     return Grid{
         .alloc = alloc,
         .transform = tf.*,
         .cells = cells,
+        .cols = n_cols,
+        .rows = n_rows,
     };
 }
 
@@ -114,13 +135,92 @@ pub fn deinit(self: *Self) void {
 }
 
 pub fn render(self: *Self) void {
-    for (self.cells.items) |*cell| {
-        renderer.drawQuad(&cell.tf, .white, false);
-        // log.info("tf: {any}", .{cell.tf});
+    renderer.drawQuad(&previous_cell.?.tf, .red, false);
+
+    const neighbours = self.getCellNeighbours(previous_cell_index);
+    for (neighbours) |cell| {
+        if (cell == null) continue;
+        renderer.drawQuad(&cell.?.tf, .green, false);
     }
 }
 
 pub fn randomCell(self: *Self) *Cell {
     const idx = math.randomInt(usize, 0, self.cells.items.len);
     return &self.cells.items[idx];
+}
+
+// on update loop through all cells and check if any boid within
+// them is not in the cell anymore. if it isn't then check if it is in its
+// neighbours. update the cells to contain the updated boids
+
+pub var previous_cell: ?*Cell = null;
+pub var previous_cell_index: usize = 0;
+pub fn update(self: *Self, selected_boid: *const Boid) void {
+    const boid_pos = selected_boid.transform.position;
+    if (previous_cell == null) {
+        for (self.cells.items, 0..) |*cell, i| {
+            if (cell.contains(boid_pos)) {
+                previous_cell = cell;
+                previous_cell_index = i;
+            }
+        }
+        return;
+    }
+
+    const pcell = previous_cell.?;
+    if (pcell.contains(boid_pos)) {
+        return;
+    }
+    for (self.cells.items, 0..) |*cell, i| {
+        if (cell.contains(boid_pos)) {
+            previous_cell = cell;
+            previous_cell_index = i;
+        }
+    }
+}
+
+/// [Top-left, Top, Top-right, Left, Center, Right, Bottom-left, Bottom, Bottom-right]
+pub fn getCellNeighbours(self: *Self, idx: usize) [8]?*Cell {
+    const row: i32 = @intCast(@divTrunc(idx, self.cols));
+    const col: i32 = @intCast(idx % self.cols);
+    //
+    const directions = [_]Vec2{
+        .init(-1, 0),
+        .init(-1, 1),
+        .init(0, 1),
+        .init(1, 1),
+        .init(1, 0),
+        .init(1, -1),
+        .init(0, -1),
+        .init(-1, -1),
+    };
+
+    var neighbours: [8]?*Cell = undefined;
+
+    for (directions, 0..) |d, i| {
+        const dr: i32 = @intFromFloat(d.x);
+        const dc: i32 = @intFromFloat(d.y);
+
+        const neighbor_col = col + dc;
+        const neighbor_row = row + dr;
+
+        if (0 <= neighbor_row and neighbor_row < self.cells.items.len) {
+            const num_cols: i32 = @intCast(self.cols);
+
+            var neighbour_idx = neighbor_row * num_cols + neighbor_col;
+            if (neighbour_idx < 0) {
+                log.info("less than 0", .{});
+                neighbour_idx += @intCast(self.cells.items.len);
+            } else if (neighbour_idx >= self.cells.items.len) {
+                log.info("greater than items.len", .{});
+                neighbour_idx -= @intCast(self.cells.items.len);
+            }
+            neighbours[i] = &self.cells.items[@intCast(neighbour_idx)];
+            log.info("i: {}", .{i});
+        } else {
+            neighbours[i] = null;
+        }
+    }
+
+    return neighbours;
 }
