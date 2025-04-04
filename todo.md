@@ -6,7 +6,8 @@ optimize:
     -- instance the triangles
     divide the area up into grids to optimize neighbour search
         -- render a grid
-        divide boids up into cells
+        -- divide boids up into cells
+        add boids to cells
         check for boids in current and neighbouring cells
 
 be able to check collision against rects? fire rays in every direction?
