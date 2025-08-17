@@ -159,14 +159,22 @@ fn deinit() void {
     boid_renderer.deinit();
 }
 
+const builtin = @import("builtin");
+
 pub fn main() !void {
-    try engine.init(&.{
-        // .width = 1200,
-        // .height = 680,
-        .width = 3840,
-        .height = 2160,
-        .name = "App",
-    });
+    if (builtin.os.tag == .linux) {
+        try engine.init(&.{
+            .width = 3840,
+            .height = 2160,
+            .name = "verlet",
+        });
+    } else {
+        try engine.init(&.{
+            .width = 1920,
+            .height = 1080,
+            .name = "verlet",
+        });
+    }
     defer engine.deinit();
     engine.run(&.{
         .init = init,
