@@ -11,14 +11,14 @@ const Allocator = std.mem.Allocator;
 const VertexBuffer = @import("VertexBuffer.zig");
 const assert = engine.debug.assert;
 
-pub const DrawCommandType = enum {
+pub const DrawCommandType = enum(u8) {
     draw_arrays,
     draw_elements,
     draw_arrays_instanced,
     draw_elements_instanced,
 };
 
-pub const DrawCommandMode = enum {
+pub const DrawCommandMode = enum(u8) {
     triangles,
     points,
     lines,

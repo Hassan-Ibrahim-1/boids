@@ -756,3 +756,35 @@ pub fn setKeyCallback(
         c_mods,
     );
 }
+
+pub fn drawCommand(name: []const u8, dc: *engine.DrawCommand) void {
+    const mode_combo = comptime mode: {
+        var cmb: [:0]const u8 = "";
+        const fields = std.meta.fields(engine.DrawCommandMode);
+        for (fields) |field| {
+            cmb = cmb ++ field.name ++ "\x00";
+        }
+        break :mode cmb;
+    };
+
+    const type_combo = comptime typ: {
+        var cmb: [:0]const u8 = "";
+        const fields = std.meta.fields(engine.DrawCommandType);
+        for (fields) |field| {
+            cmb = cmb ++ field.name ++ "\x00";
+        }
+        break :typ cmb;
+    };
+
+    const alloc = engine.frameAllocator();
+
+    var n = std.fmt.allocPrintZ(alloc, "{s} mode", .{name}) catch unreachable;
+    var selected: i32 = @intFromEnum(dc.mode);
+    _ = combo(n, &selected, mode_combo);
+    dc.mode = @enumFromInt(selected);
+
+    n = std.fmt.allocPrintZ(alloc, "{s} type", .{name}) catch unreachable;
+    selected = @intFromEnum(dc.type);
+    _ = combo(n, &selected, type_combo);
+    dc.type = @enumFromInt(selected);
+}

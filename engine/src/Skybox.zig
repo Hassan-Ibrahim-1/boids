@@ -42,12 +42,12 @@ fn loadSkybox(paths: [6][]const u8) Skybox {
             @ptrCast(&nr_channels),
             0,
         );
-        defer c.stbi_image_free(data);
         if (data == 0) {
             const msg = c.stbi_failure_reason();
             log.info("msg: {s}", .{msg});
         }
         assert(data != 0, "bad file read at {s}", .{paths[i]});
+        defer c.stbi_image_free(data);
 
         gl.TexImage2D(
             gl.TEXTURE_CUBE_MAP_POSITIVE_X + @as(c_uint, @intCast(i)),

@@ -1,72 +1,77 @@
-pub const Window = @import("Window.zig");
-pub const Shader = @import("Shader.zig");
-pub const ComputeShader = @import("ComputeShader.zig");
-pub const ComputeTexture = @import("ComputeTexture.zig");
-pub const Transform = @import("Transform.zig");
-pub const Camera = @import("Camera.zig");
-pub const Color = @import("Color.zig");
-pub const debug = @import("debug.zig");
+const std = @import("std");
+const Allocator = std.mem.Allocator;
+const ArrayList = std.ArrayList;
+const StringHashMap = std.StringHashMap;
+const builtin = @import("builtin");
+
 pub const gl = @import("gl");
-pub const math = @import("math.zig");
-pub const utils = @import("utils.zig");
-pub const cl = @import("clay");
+pub const ig_raw = @import("cimgui");
+
+pub const Actor = @import("Actor.zig");
+pub const Camera = @import("Camera.zig");
+pub const cast = @import("cast.zig");
+pub const Color = @import("Color.zig");
+pub const ComputeTexture = @import("ComputeTexture.zig");
+pub const debug = @import("debug.zig");
+const editor = @import("editor/editor.zig");
+const Fs = @import("Fs.zig");
+pub const ig = @import("imgui.zig");
 pub const input = @import("input.zig");
-pub const VertexBuffer = @import("VertexBuffer.zig");
-pub const Vertex = @import("vertex.zig");
+const light = @import("light.zig");
+pub const PointLight = light.PointLight;
+pub const SpotLight = light.SpotLight;
+pub const DirLight = light.DirLight;
 const m = @import("mesh.zig");
 pub const Mesh = m.Mesh;
 pub const DrawCommand = m.DrawCommand;
 pub const DrawCommandMode = m.DrawCommandMode;
 pub const DrawCommandType = m.DrawCommandType;
-pub const String = ArrayList(u8);
-pub const Texture = @import("Texture.zig");
 pub const Material = @import("Material.zig");
-const light = @import("light.zig");
-pub const PointLight = light.PointLight;
-pub const SpotLight = light.SpotLight;
-pub const DirLight = light.DirLight;
-pub const renderer = @import("renderer/renderer.zig");
-pub const Actor = @import("Actor.zig");
-pub const RenderItem = @import("renderer/RenderItem.zig");
+pub const math = @import("math.zig");
+const Vec3 = math.Vec3;
+const Vec2 = math.Vec2;
 pub const Model = @import("Model.zig");
+pub const renderer = @import("renderer/renderer.zig");
+pub const RenderItem = @import("renderer/RenderItem.zig");
 pub const Scene = @import("Scene.zig");
+pub const Shader = @import("Shader.zig");
 pub const Skybox = @import("Skybox.zig");
-const editor = @import("editor/editor.zig");
-pub const ig = @import("imgui.zig");
+const text = @import("text.zig");
+pub const Texture = @import("Texture.zig");
+pub const Transform = @import("Transform.zig");
+pub const utils = @import("utils.zig");
+const Size = utils.Size;
+pub const Vertex = @import("vertex.zig");
+pub const VertexBuffer = @import("VertexBuffer.zig");
+pub const Window = @import("Window.zig");
+pub const Billboard = @import("Billboard.zig");
 
+pub const ComputeShader = if (builtin.os.tag != .macos) val: {
+    break :val @import("ComputeShader.zig");
+} else val: {
+    break :val {};
+};
+pub const String = ArrayList(u8);
 pub const glfw = @cImport({
     @cDefine("GLFW_INCLUDE_NONE", "1");
     @cInclude("GLFW/glfw3.h");
 });
-pub const ig_raw = @import("cimgui");
-
 pub const ig_backend = @cImport({
     @cInclude("backends/dcimgui_impl_opengl3.h");
     @cInclude("backends/dcimgui_impl_glfw.h");
 });
 
-const Fs = @import("Fs.zig");
 /// use this to get access to engine resources
 pub const fs = Fs.init(&.{
-    .shader_dir = "../engine/shaders/",
-    .font_dir = "../engine/fonts/",
-    .texture_dir = "../engine/textures/",
-    .model_dir = "../engine/models/",
-    .save_dir = "../engine/save-files/",
+    .shader_dir = "engine/shaders/",
+    .font_dir = "engine/fonts/",
+    .texture_dir = "engine/textures/",
+    .model_dir = "engine/models/",
+    .save_dir = "engine/save-files/",
 });
 
-const cl_renderer = @import("clay_renderer/renderer.zig");
-const text = @import("text.zig");
 const log = debug.log.Scoped(.engine);
-const Vec3 = math.Vec3;
-const Vec2 = math.Vec2;
-
-const std = @import("std");
-const builtin = @import("builtin");
-const Allocator = std.mem.Allocator;
 const GPA = std.heap.DebugAllocator(.{ .safety = true });
-const ArrayList = std.ArrayList;
-
 pub const Application = struct {
     init: *const fn () anyerror!void,
     update: *const fn () anyerror!void,
@@ -79,11 +84,12 @@ const EngineInitInfo = struct {
     name: [*:0]const u8,
 };
 
-const StringHashMap = std.StringHashMap;
-
 const State = struct {
     gpa: GPA = undefined,
-    allocator: Allocator = undefined,
+    alloc: Allocator = undefined,
+    arena: std.heap.ArenaAllocator = undefined,
+    frame_arena: std.heap.ArenaAllocator = undefined,
+
     window: Window = undefined,
     app: *const Application = undefined,
     last_frame_time: f32 = 0.0,
@@ -97,6 +103,7 @@ const State = struct {
     scene: Scene = undefined,
     imio: *ig_raw.ImGuiIO_t = undefined,
     clear_color: Color = undefined,
+    models: ArrayList(*Model) = undefined,
 };
 
 var state = State{};
@@ -105,15 +112,15 @@ pub fn init(init_info: *const EngineInitInfo) !void {
     initAllocator();
     try initWindow(init_info);
     initCamera();
-    state.shaders = StringHashMap(*Shader).init(state.allocator);
-    state.clear_color = Color.from(26);
+    state.shaders = StringHashMap(*Shader).init(state.arena.allocator());
+    state.clear_color = .from(26);
     initScene();
     initImGui(init_info);
+    state.models = .init(state.arena.allocator());
 
-    renderer.init(state.allocator);
-    input.init(state.allocator);
-    try text.init(state.allocator);
-    try cl_renderer.init(state.allocator);
+    renderer.init(state.alloc);
+    input.init(state.alloc);
+    try text.init(state.alloc);
     editor.init();
 
     // for text rendering
@@ -131,20 +138,18 @@ pub fn deinit() void {
 
     input.deinit();
     text.deinit();
-    cl_renderer.deinit();
     renderer.deinit();
-    state.shaders.deinit();
+    deinitShaders();
+    deinitModels();
     deinitImGui();
     state.scene.deinit();
 
-    // deinit window after everything that requires opengl
-    state.window.deinit();
-    glfw.glfwTerminate();
-    std.debug.assert(!state.gpa.detectLeaks());
+    deinitWindow();
+
+    state.frame_arena.deinit();
+    state.arena.deinit();
     std.debug.assert(state.gpa.deinit() == .ok);
 }
-
-const Size = utils.Size;
 
 pub fn windowSize() Size {
     return Size{
@@ -158,13 +163,22 @@ pub fn window() *Window {
 }
 
 pub fn allocator() Allocator {
-    return state.allocator;
+    return state.alloc;
+}
+
+pub fn frameAllocator() Allocator {
+    return state.frame_arena.allocator();
+}
+
+pub fn arena() Allocator {
+    return state.arena.allocator();
 }
 
 pub fn deltaTime() f32 {
     return state.delta_time;
 }
 
+/// in seconds
 pub fn time() f32 {
     return @floatCast(glfw.glfwGetTime());
 }
@@ -180,6 +194,26 @@ pub fn userShaders() *StringHashMap(*Shader) {
 
 pub fn scene() *Scene {
     return &state.scene;
+}
+
+pub fn loadModel(path: []const u8) *Model {
+    const model = state.arena.allocator().create(Model) catch unreachable;
+    model.* = Model.init(state.alloc, path) catch unreachable;
+    state.models.append(model) catch unreachable;
+    return state.models.items[state.models.items.len - 1];
+}
+
+fn deinitModels() void {
+    for (state.models.items) |model| {
+        model.deinit();
+    }
+}
+
+fn deinitShaders() void {
+    var iter = state.shaders.valueIterator();
+    while (iter.next()) |shader| {
+        shader.*.deinit();
+    }
 }
 
 pub fn wireframeEnabled() bool {
@@ -198,9 +232,9 @@ fn startFrame() void {
     gl.Clear(gl.COLOR_BUFFER_BIT);
     gl.Clear(gl.DEPTH_BUFFER_BIT);
     updateDeltaTime();
+
     imGuiStartFrame();
     input.startFrame();
-    cl_renderer.startFrame();
     renderer.startFrame();
     processInput();
     // scene().skybox_hidden = true;
@@ -208,39 +242,24 @@ fn startFrame() void {
 }
 
 fn endFrame() void {
-    cl_renderer.endFrame();
     input.endFrame();
     renderer.endFrame();
     imGuiEndFrame();
 
     state.window.swapBuffers();
+    _ = state.frame_arena.reset(.retain_capacity);
 }
 
 /// added shaders will be reloaded when 'o' is pressed
 /// they will be deinitalized at engine.deinit by renderer
 /// DON'T deinitialize the shader yourself
 pub fn addShader(name: []const u8, shader: *Shader) void {
-    state.shaders.put(name, shader) catch |err| {
-        log.err("Failed to append shader {s}: {s}", .{
-            name,
-            @errorName(err),
-        });
-        @panic("Allocation failed");
-    };
+    state.shaders.put(name, shader) catch unreachable;
 }
 
 fn update() void {
     startFrame();
     defer endFrame();
-
-    // text.renderText(
-    //     "the brown fox jumps\n over the lazy dog",
-    //     Vec2.init(45.0, 100.0),
-    //     1.0,
-    //     Color.init(127, 121, 221),
-    // ) catch |err| {
-    //     log.err("failed to render text: {s}", err);
-    // };
 
     editor.update();
 
@@ -251,83 +270,6 @@ fn update() void {
     updateImGui();
 
     debug.checkGlError();
-}
-
-fn createLayout() void {
-    const light_grey: cl.Color = .{ 224, 215, 210, 255 };
-    const white: cl.Color = .{ 250, 250, 255, 255 };
-    const red: cl.Color = .{ 168, 66, 28, 255 };
-    const blue: cl.Color = .{ 0, 0, 255, 255 };
-    _ = blue; // autofix
-    cl.UI()(.{
-        .id = cl.ElementId.ID("OuterContainer"),
-        .layout = .{
-            .direction = .left_to_right,
-            .sizing = cl.Sizing.grow,
-            .padding = cl.Padding.all(16),
-            .child_gap = 16,
-        },
-        .background_color = white,
-    })({
-        cl.UI()(.{
-            .id = cl.ElementId.ID("SideBar"),
-            .layout = .{
-                .direction = .top_to_bottom,
-                .sizing = .{ .h = cl.SizingAxis.grow, .w = cl.SizingAxis.fixed(300) },
-                .padding = cl.Padding.all(16),
-                .child_alignment = .{ .x = .center, .y = .top },
-                .child_gap = 16,
-            },
-            .background_color = light_grey,
-        })({
-            cl.UI()(.{
-                .id = cl.ElementId.ID("ProfilePictureOuter"),
-                .layout = .{
-                    .sizing = .{ .w = cl.SizingAxis.grow },
-                    .padding = cl.Padding.all(16),
-                    .child_alignment = .{ .x = .left, .y = .center },
-                    .child_gap = 16,
-                },
-                .background_color = red,
-            })({
-                cl.UI()(.{
-                    .id = cl.ElementId.ID("ProfilePicture"),
-                    .layout = .{
-                        .sizing = .{
-                            .h = cl.SizingAxis.fixed(60),
-                            .w = cl.SizingAxis.fixed(60),
-                        },
-                    },
-                })({});
-                cl.text("Clay - UI Library", .{ .font_size = 24, .color = light_grey });
-            });
-
-            for (0..5) |i| sidebarItemComponent(@intCast(i));
-        });
-
-        cl.UI()(.{
-            .id = cl.ElementId.ID("MainContent"),
-            .layout = .{ .sizing = cl.Sizing.grow },
-            .background_color = light_grey,
-        })({
-            //...
-        });
-    });
-}
-
-fn sidebarItemComponent(index: u32) void {
-    const sidebar_item_layout: cl.LayoutConfig = .{
-        .sizing = .{
-            .w = cl.SizingAxis.grow,
-            .h = cl.SizingAxis.fixed(50),
-        },
-    };
-    const orange: cl.Color = .{ 225, 138, 50, 255 };
-    cl.UI()(.{
-        .id = cl.ElementId.IDI("SidebarBlob", index),
-        .layout = sidebar_item_layout,
-        .background_color = orange,
-    })({});
 }
 
 pub fn run(user_app: *const Application) void {
@@ -357,12 +299,13 @@ pub fn run(user_app: *const Application) void {
 }
 
 fn initAllocator() void {
-    state.gpa = GPA.init;
-    state.allocator = state.gpa.allocator();
-    state.allocator = std.heap.smp_allocator;
+    state.gpa = .init;
+    state.alloc = state.gpa.allocator();
+    state.arena = .init(state.alloc);
+    state.frame_arena = .init(state.alloc);
 }
 
-fn glfwCallback(
+fn glfwErrorCallback(
     code: c_int,
     desc: [*c]const u8,
 ) callconv(.C) void {
@@ -372,24 +315,35 @@ fn glfwCallback(
 fn initWindow(init_info: *const EngineInitInfo) !void {
     if (glfw.glfwInit() == 0) return error.GlfwInitfailed;
     glfw.glfwWindowHint(glfw.GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfw.glfwWindowHint(glfw.GLFW_CONTEXT_VERSION_MINOR, 6);
+    if (builtin.os.tag == .macos) {
+        glfw.glfwWindowHint(glfw.GLFW_CONTEXT_VERSION_MINOR, 1);
+    } else {
+        glfw.glfwWindowHint(glfw.GLFW_CONTEXT_VERSION_MINOR, 6);
+    }
     glfw.glfwWindowHint(glfw.GLFW_OPENGL_PROFILE, glfw.GLFW_OPENGL_CORE_PROFILE);
     if (builtin.os.tag == .macos) {
         glfw.glfwWindowHint(glfw.GLFW_OPENGL_FORWARD_COMPAT, 1);
+    } else if (builtin.os.tag == .linux) {
+        glfw.glfwWindowHint(glfw.GLFW_PLATFORM, glfw.GLFW_PLATFORM_WAYLAND);
+        glfw.glfwWindowHint(glfw.GLFW_SCALE_TO_MONITOR, glfw.GLFW_TRUE);
     }
-    glfw.glfwWindowHint(glfw.GLFW_SCALE_TO_MONITOR, glfw.GLFW_TRUE);
 
     state.window = try Window.init(
-        state.allocator,
+        state.alloc,
         init_info.width,
         init_info.height,
         init_info.name,
     );
 
-    _ = glfw.glfwSetErrorCallback(glfwCallback);
+    _ = glfw.glfwSetErrorCallback(glfwErrorCallback);
     state.window.enableCursor(false);
     glfw.glfwSwapInterval(0);
     // state.window.glfw_window.setInputModeCursor(.disabled);
+}
+
+fn deinitWindow() void {
+    state.window.deinit();
+    glfw.glfwTerminate();
 }
 
 fn initCamera() void {
@@ -397,7 +351,7 @@ fn initCamera() void {
 }
 
 fn initScene() void {
-    state.scene = Scene.init(state.allocator);
+    state.scene = Scene.init(state.alloc);
     state.scene.loadDefaultSkybox();
 }
 
@@ -406,17 +360,18 @@ fn initImGui(init_info: *const EngineInitInfo) void {
     _ = ig_raw.igCreateContext(null);
 
     state.imio = @ptrCast(ig_raw.igGetIO());
-    state.imio.ConfigFlags = ig_backend.ImGuiConfigFlags_NavEnableKeyboard;
+    state.imio.ConfigFlags |= ig_backend.ImGuiConfigFlags_NavEnableKeyboard;
+    state.imio.ConfigFlags |= ig_backend.ImGuiConfigFlags_NoMouseCursorChange;
 
     ig_raw.igStyleColorsDark(null);
 
     _ = ig_backend
         .cImGui_ImplGlfw_InitForOpenGL(@ptrCast(state.window.glfw_window), true);
 
-    const glsl_version = "#version 460";
+    const glsl_version = if (builtin.os.tag == .macos) "#version 410" else "#version 460";
     _ = ig_backend.cImGui_ImplOpenGL3_InitEx(glsl_version);
 
-    ig.init(state.allocator);
+    ig.init(state.alloc);
     ig.setMaterialYouTheme();
 
     // wayland scaling stuff

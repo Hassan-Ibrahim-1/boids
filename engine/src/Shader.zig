@@ -1,7 +1,7 @@
 const std = @import("std");
 const gl = @import("gl");
 const debug = @import("debug.zig");
-const log = debug.log;
+const log = debug.log.Scoped(.Shader);
 const Allocator = std.mem.Allocator;
 const math = @import("math.zig");
 const Vec3 = math.Vec3;
@@ -10,6 +10,7 @@ const Mat4 = math.Mat4;
 const Mat3 = math.Mat3;
 const engine = @import("engine.zig");
 const Texture = engine.Texture;
+const builtin = @import("builtin");
 
 const Shader = @This();
 
@@ -78,13 +79,22 @@ fn loadShader(
     var src = std.ArrayList(u8).init(allocator);
     defer src.deinit();
 
+    if (builtin.os.tag == .macos) {
+        src.appendSlice("#version 410 core\n") catch unreachable;
+    } else {
+        src.appendSlice("#version 460 core\n") catch unreachable;
+    }
+
     reader.readAllArrayList(&src, 100000) catch unreachable;
     // shader must be null terminated
     src.append(0) catch unreachable;
 
     gl.ShaderSource(shader, 1, @ptrCast(&src), null);
     gl.CompileShader(shader);
-    try checkShaderCompilationSuccess(shader);
+    checkShaderCompilationSuccess(shader) catch |err| {
+        log.err("failed to load shader at path: {s}", .{path});
+        return err;
+    };
 
     gl.AttachShader(id, shader);
 }

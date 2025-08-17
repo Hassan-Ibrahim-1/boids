@@ -86,3 +86,11 @@ pub fn clampedVec4(self: *const Color) Vec4 {
         @as(f32, @floatFromInt(self.a)) / 255.0,
     );
 }
+
+pub fn random() Color {
+    return Color.init(
+        math.randomInt(u8, 0, 255),
+        math.randomInt(u8, 0, 255),
+        math.randomInt(u8, 0, 255),
+    );
+}

@@ -27,6 +27,7 @@ name: [*:0]const u8,
 glfw_window: *glfw.GLFWwindow,
 /// don't touch this
 gl_procs: *gl.ProcTable,
+/// dont mutate this manually
 cursor_enabled: bool = false,
 
 /// Assumes that glfw.init has already been called
@@ -38,39 +39,35 @@ pub fn init(
     height: u32,
     name: [*:0]const u8,
 ) !Window {
-    const monitor = glfw.glfwGetPrimaryMonitor();
-    var xscale: f32 = 0;
-    var yscale: f32 = 0;
-    glfw.glfwGetMonitorContentScale(
-        monitor,
-        @ptrCast(&xscale),
-        @ptrCast(&yscale),
-    );
-    const window = glfw.glfwCreateWindow(
-        @intFromFloat(@as(f32, @floatFromInt(width)) * xscale),
-        @intFromFloat(@as(f32, @floatFromInt(height)) * yscale),
-        @ptrCast(name),
-        monitor,
-        null,
-    ) orelse return error.GlfwInitfailed;
-    // // center window
-    // var monitor_width: i32 = 0;
-    // var monitor_height: i32 = 0;
-    // glfw.glfwGetMonitorPhysicalSize(
-    //     monitor,
-    //     @ptrCast(&monitor_width),
-    //     @ptrCast(&monitor_height),
-    // );
-    // engine.debug.log.info("{d:.3}, {d:.3}", .{
-    //     @as(f32, @floatFromInt(monitor_width)) * xscale,
-    //     @as(f32, @floatFromInt(monitor_height)) * yscale,
-    // });
-
-    glfw.glfwSetInputMode(
-        window,
-        glfw.GLFW_RAW_MOUSE_MOTION,
-        glfw.GLFW_TRUE,
-    );
+    // fullscreen on linux
+    // windowed on macos
+    const window = win: {
+        if (builtin.os.tag == .macos) {
+            break :win glfw.glfwCreateWindow(
+                @intCast(width),
+                @intCast(height),
+                @ptrCast(name),
+                null,
+                null,
+            );
+        } else {
+            const monitor = glfw.glfwGetPrimaryMonitor();
+            var xscale: f32 = 0;
+            var yscale: f32 = 0;
+            glfw.glfwGetMonitorContentScale(
+                monitor,
+                @ptrCast(&xscale),
+                @ptrCast(&yscale),
+            );
+            break :win glfw.glfwCreateWindow(
+                @intFromFloat(@as(f32, @floatFromInt(width)) * xscale),
+                @intFromFloat(@as(f32, @floatFromInt(height)) * yscale),
+                @ptrCast(name),
+                monitor,
+                null,
+            ) orelse return error.GlfwInitfailed;
+        }
+    };
 
     glfw.glfwMakeContextCurrent(window);
     // glfw.makeContextCurrent(glfw_window);
@@ -85,20 +82,39 @@ pub fn init(
 
     glfw.glfwFocusWindow(window);
 
+    var major: c_int = 0;
+    var minor: c_int = 0;
+    var rev: c_int = 0;
+    glfw.glfwGetVersion(&major, &minor, &rev);
+    log.info("glfw version {}.{}.{}", .{ major, minor, rev });
+
     log.info(
         "creating window of size: {}, {}",
         .{ width, height },
     );
-    gl.Viewport(0, 0, @intCast(width), @intCast(height));
+    if (builtin.os.tag == .linux) {
+        gl.Viewport(0, 0, @intCast(width), @intCast(height));
+    }
 
-    return .{
-        .allocator = allocator,
-        .width = width,
-        .height = height,
-        .name = name,
-        .glfw_window = window,
-        .gl_procs = gl_procs,
-    };
+    if (builtin.os.tag == .macos) {
+        return .{
+            .allocator = allocator,
+            .width = width,
+            .height = height,
+            .name = name,
+            .glfw_window = window.?,
+            .gl_procs = gl_procs,
+        };
+    } else {
+        return .{
+            .allocator = allocator,
+            .width = width,
+            .height = height,
+            .name = name,
+            .glfw_window = window,
+            .gl_procs = gl_procs,
+        };
+    }
 }
 
 pub fn deinit(self: *Window) void {
@@ -118,24 +134,11 @@ fn framebufferSizeCallback(
 }
 
 pub fn swapBuffers(self: *Window) void {
-    if (builtin.os.tag == .linux) {
-        // HACK:
-        // there's a bug on linux where after enabling and then disabling the cursor,
-        // the cursor remains visible. setting the cursor to GLFW_HIDDEN after disabling it
-        // fixes that bug. doing it the other way around messes stuff up
-        glfw.glfwSetInputMode(
-            self.glfw_window,
-            glfw.GLFW_CURSOR,
-            if (self.cursor_enabled) glfw.GLFW_CURSOR_NORMAL else glfw.GLFW_CURSOR_DISABLED,
-        );
-    }
-
     glfw.glfwGetWindowSize(
         self.glfw_window,
         @ptrCast(&self.width),
         @ptrCast(&self.height),
     );
-
     glfw.glfwSwapBuffers(self.glfw_window);
 }
 
@@ -161,18 +164,18 @@ pub fn getKey(self: *Window, key: Key) Action {
 
 pub fn enableCursor(self: *Window, b: bool) void {
     self.cursor_enabled = b;
-    if (builtin.os.tag != .linux) {
+
+    if (self.cursor_enabled) {
         glfw.glfwSetInputMode(
             self.glfw_window,
             glfw.GLFW_CURSOR,
-            if (b) glfw.GLFW_CURSOR_NORMAL else glfw.GLFW_CURSOR_HIDDEN,
+            glfw.GLFW_CURSOR_NORMAL,
         );
-        if (!b) {
-            glfw.glfwSetInputMode(
-                self.glfw_window,
-                glfw.GLFW_CURSOR,
-                glfw.GLFW_CURSOR_DISABLED,
-            );
-        }
+    } else {
+        glfw.glfwSetInputMode(
+            self.glfw_window,
+            glfw.GLFW_CURSOR,
+            glfw.GLFW_CURSOR_DISABLED,
+        );
     }
 }

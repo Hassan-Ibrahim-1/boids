@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
@@ -21,9 +22,9 @@ pub fn build(b: *std.Build) void {
     engine.addImport("freetype", ft_mod);
 
     const src_files = [_][]const u8{
-        "dependencies/stb_image.c",
-        "dependencies/stb_perlin.c",
-        "dependencies/cgltf.c",
+        dependency("stb_image.c"),
+        dependency("stb_perlin.c"),
+        dependency("cgltf.c"),
     };
 
     const flags = val: {
@@ -42,7 +43,7 @@ pub fn build(b: *std.Build) void {
         .files = &src_files,
         .flags = &flags,
     });
-    engine.addIncludePath(b.path("dependencies"));
+    engine.addIncludePath(b.path(dependency("")));
 
     // const cimgui_backends = b.createModule(.{
     //     .optimize = optimize,
@@ -52,7 +53,7 @@ pub fn build(b: *std.Build) void {
     // buildImGuiBackend(cimgui_backends);
     // engine.addImport("cimgui_backends", cimgui_backends);
 
-    engine.addLibraryPath(b.path("dependencies/glfw/lib/"));
+    engine.addLibraryPath(b.path(dependency("glfw/lib/")));
     engine.linkSystemLibrary("glfw", .{});
     // engine.addLibraryPath(b.path("dependencies/glfw/lib"));
     // engine.linkLibrary()
@@ -60,7 +61,7 @@ pub fn build(b: *std.Build) void {
     // gl
     const gl_bindings = @import("zigglgen").generateBindingsModule(b, .{
         .api = .gl,
-        .version = .@"4.6",
+        .version = if (builtin.os.tag == .macos) .@"4.1" else .@"4.6",
         .profile = .core,
         .extensions = &.{},
     });
@@ -77,13 +78,6 @@ pub fn build(b: *std.Build) void {
     engine.addImport("cimgui", dep_cimgui.module("cimgui"));
     engine.addCMacro("IMGUI_USE_LEGACY_CRC32_ADLER", "1");
 
-    const clay_dep = b.dependency("zclay", .{
-        .target = target,
-        .optimize = optimize,
-    });
-    const clay_module = clay_dep.module("zclay");
-    engine.addImport("clay", clay_module);
-
     // check
     const exe_check = b.addExecutable(.{
         .name = name,
@@ -94,12 +88,21 @@ pub fn build(b: *std.Build) void {
 }
 
 fn buildImGuiBackend(b: *std.Build, mod: *std.Build.Module) void {
-    mod.addIncludePath(b.path("dependencies/cimgui.zig/dcimgui/"));
+    mod.addIncludePath(b.path(dependency("cimgui.zig/dcimgui/")));
     mod.addCSourceFiles(.{ .files = &.{
-        "dependencies/cimgui.zig/dcimgui/backends/imgui_impl_opengl3.cpp",
-        "dependencies/cimgui.zig/dcimgui/backends/dcimgui_impl_opengl3.cpp",
+        dependency("cimgui.zig/dcimgui/backends/imgui_impl_opengl3.cpp"),
+        dependency("cimgui.zig/dcimgui/backends/dcimgui_impl_opengl3.cpp"),
 
-        "dependencies/cimgui.zig/dcimgui/backends/imgui_impl_glfw.cpp",
-        "dependencies/cimgui.zig/dcimgui/backends/dcimgui_impl_glfw.cpp",
+        dependency("cimgui.zig/dcimgui/backends/imgui_impl_glfw.cpp"),
+        dependency("cimgui.zig/dcimgui/backends/dcimgui_impl_glfw.cpp"),
     } });
+}
+
+fn dependency(comptime path: []const u8) []const u8 {
+    const prefix = switch (builtin.os.tag) {
+        .macos => "macos/",
+        .linux => "linux/",
+        else => unreachable,
+    };
+    return "dependencies/" ++ prefix ++ path;
 }

@@ -1,6 +1,7 @@
-const c = @cImport({
-    @cInclude("cgltf.h");
-});
+const std = @import("std");
+const ArrayList = std.ArrayList;
+const Allocator = std.mem.Allocator;
+
 const engine = @import("engine.zig");
 const log = engine.debug.log;
 const fs = engine.fs;
@@ -11,11 +12,19 @@ const math = engine.math;
 const Vec3 = math.Vec3;
 const String = engine.String;
 const Vec2 = math.Vec2;
-const std = @import("std");
-const ArrayList = std.ArrayList;
-const Allocator = std.mem.Allocator;
+
+const c = @cImport({
+    @cInclude("cgltf.h");
+});
 
 const Model = @This();
+
+const Error = error{
+    FileNotFound,
+    IoError,
+    InvalidGltf,
+    Unknown,
+} || Allocator.Error;
 
 meshes: ArrayList(Mesh),
 textures: ArrayList(Texture),
@@ -23,7 +32,7 @@ textures: ArrayList(Texture),
 pub fn init(
     allocator: Allocator,
     path: []const u8,
-) Model {
+) Error!Model {
     const options: c.cgltf_options = .{};
     var data: *c.cgltf_data = undefined;
     var result = c.cgltf_parse_file(
@@ -31,50 +40,28 @@ pub fn init(
         @ptrCast(path),
         @ptrCast(&data),
     );
-    defer c.cgltf_free(data);
     if (result != c.cgltf_result_success) {
-        switch (result) {
-            c.cgltf_result_file_not_found => {
-                log.err("file not found", .{});
-            },
-            c.cgltf_result_io_error => {
-                log.err("io error", .{});
-            },
-            c.cgltf_result_invalid_gltf => {
-                log.err("invalid gltf", .{});
-            },
-            c.cgltf_result_out_of_memory => {
-                log.err("out of memory", .{});
-            },
-            else => {
-                log.err("some other reason", .{});
-            },
-        }
-        log.err("Failed to load model from file {s}", .{path});
-        const r = c.cgltf_validate(data);
-        log.info("mm: {}", .{r});
-        log.info("Failed here", .{});
-        @panic("Bad model load");
+        return intToError(result);
     }
-    log.info("file loaded", .{});
+    defer c.cgltf_free(data);
+    // log.info("file loaded", .{});
     result = c.cgltf_load_buffers(
         &options,
         @ptrCast(data),
         @ptrCast(path),
     );
     if (result != c.cgltf_result_success) {
-        log.err("Failed to load model from file {s}", .{path});
-        @panic("Bad model load");
+        return intToError(result);
     }
 
     var meshes = ArrayList(Mesh).init(allocator);
     var textures = ArrayList(Texture).init(allocator);
-    meshes.resize(data.meshes_count) catch unreachable;
+    try meshes.resize(data.meshes_count);
 
     for (0..data.meshes_count) |i| {
         var mesh = &meshes.items[i];
         mesh.* = Mesh.init(allocator);
-        processMesh(@ptrCast(&data.meshes[i]), mesh);
+        try processMesh(@ptrCast(&data.meshes[i]), mesh);
         mesh.sendData();
         mesh.createDrawCommand();
     }
@@ -85,7 +72,7 @@ pub fn init(
             data,
             @ptrCast(&data.materials[i]),
         )) |tex| {
-            textures.append(tex) catch unreachable;
+            try textures.append(tex);
         }
     }
 
@@ -93,6 +80,26 @@ pub fn init(
         .meshes = meshes,
         .textures = textures,
     };
+}
+
+fn intToError(int: c_uint) Error {
+    switch (int) {
+        c.cgltf_result_file_not_found => {
+            return Error.FileNotFound;
+        },
+        c.cgltf_result_io_error => {
+            return Error.IoError;
+        },
+        c.cgltf_result_invalid_gltf => {
+            return Error.InvalidGltf;
+        },
+        c.cgltf_result_out_of_memory => {
+            return Error.OutOfMemory;
+        },
+        else => {
+            return Error.Unknown;
+        },
+    }
 }
 
 pub fn deinit(self: *Model) void {
@@ -107,7 +114,7 @@ pub fn deinit(self: *Model) void {
 }
 
 /// Expects an initalized Mesh
-fn processMesh(mesh: *c.cgltf_mesh, out_mesh: *Mesh) void {
+fn processMesh(mesh: *c.cgltf_mesh, out_mesh: *Mesh) Allocator.Error!void {
     //
     const vb = &out_mesh.vertex_buffer;
 
@@ -117,7 +124,7 @@ fn processMesh(mesh: *c.cgltf_mesh, out_mesh: *Mesh) void {
         const positions: *c.cgltf_accessor = @ptrCast(primitive.attributes[0].data);
         const vertex_count = positions.count;
 
-        vb.vertices.resize(vertex_count) catch unreachable;
+        try vb.vertices.resize(vertex_count);
 
         for (0..vertex_count) |v| {
             _ = c.cgltf_accessor_read_float(
@@ -168,7 +175,7 @@ fn processMesh(mesh: *c.cgltf_mesh, out_mesh: *Mesh) void {
         }
         if (primitive.indices != 0) {
             const index_count = primitive.indices.*.count;
-            vb.indices.resize(index_count) catch unreachable;
+            try vb.indices.resize(index_count);
             for (0..index_count) |j| {
                 const index = c.cgltf_accessor_read_index(primitive.indices, j);
                 vb.indices.items[j] = @intCast(index);

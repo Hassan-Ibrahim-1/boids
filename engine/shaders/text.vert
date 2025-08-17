@@ -1,4 +1,3 @@
-#version 460 core
 
 // position stored in x, y
 // tex coords stored in z, w

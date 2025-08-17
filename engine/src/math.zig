@@ -40,6 +40,7 @@ pub fn randomFloat(T: type, min: T, max: T) T {
     return min + (max - min) * randomFloat01(T);
 }
 
+/// returns a value x where: min <= x < max
 pub fn randomInt(T: type, min: T, max: T) T {
     return rand.intRangeAtMost(T, min, max - 1);
 }
@@ -831,6 +832,10 @@ pub const Vec3 = extern struct {
         };
     }
 
+    pub fn eql(a: Vec3, b: Vec3) bool {
+        return a.x == b.x and a.y == b.y and a.z == b.z;
+    }
+
     pub fn length(self: Vec3) ValueType {
         return std.math.sqrt(self.lengthSquared());
     }
@@ -861,7 +866,8 @@ pub const Vec3 = extern struct {
     }
 
     pub fn normalized(self: Vec3) Vec3 {
-        assert(self.length() != 0, "length is zero. would lead to division by zero", .{});
+        // assert(self.length() != 0, "length is zero. would lead to division by zero", .{});
+        if (self.length() == 0) return self;
         return self.divValue(self.length());
     }
 

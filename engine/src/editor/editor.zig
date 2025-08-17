@@ -35,6 +35,7 @@ const State = struct {
     light_buf: [512]u8 = undefined,
     adding_actor: bool = false,
     adding_light: bool = false,
+    show_windows: bool = false,
 };
 var state = State{};
 
@@ -44,9 +45,12 @@ pub fn init() void {
 }
 
 pub fn update() void {
-    if (engine.cursorEnabled()) {
-        // createActorListWindow();
-        // createLightListWindow();
+    if (engine.input.keyPressed(.m)) {
+        state.show_windows = !state.show_windows;
+    }
+    if (engine.cursorEnabled() and state.show_windows) {
+        createActorListWindow();
+        createLightListWindow();
     }
 }
 

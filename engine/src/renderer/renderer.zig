@@ -1,25 +1,31 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
+const ArrayList = std.ArrayList;
+const StringHashMap = std.StringHashMap;
+
 const engine = @import("../engine.zig");
 const gl = engine.gl;
 const log = engine.debug.log;
 const debug = engine.debug;
 const Mesh = engine.Mesh;
 const assert = debug.assert;
-const Allocator = std.mem.Allocator;
 const Actor = engine.Actor;
 const Camera = engine.Camera;
 const Shader = engine.Shader;
 const VertexBuffer = engine.VertexBuffer;
-const Mat4 = math.Mat4;
 const Material = engine.Material;
 const fs = engine.fs;
-const ArrayList = std.ArrayList;
 const String = engine.String;
 const math = engine.math;
 const Mat3 = math.Mat3;
 const Skybox = engine.Skybox;
 const Model = engine.Model;
 const Transform = engine.Transform;
+const Vertex = engine.Vertex;
+const Color = engine.Color;
+const Mat4 = math.Mat4;
+const Vec3 = math.Vec3;
+const Billboard = engine.Billboard;
 
 // When adding a shader
 // add it to the Shaders struct
@@ -33,42 +39,210 @@ const Shaders = struct {
     skybox: Shader,
     wireframe: Shader,
     line: Shader,
+    billboard: Shader,
 };
 
-const StringHashMap = std.StringHashMap;
-
 const State = struct {
-    allocator: Allocator,
+    const Buffers = struct {
+        const Buffer = struct {
+            handle: c_uint,
+
+            /// how many items the buffer can hold
+            capacity: isize,
+
+            pub fn resize(self: *Buffer, cap: usize, usage: gl.@"enum") void {
+                self.capacity = @intCast(cap);
+                gl.BindBuffer(gl.ARRAY_BUFFER, self.handle);
+                gl.BufferData(gl.ARRAY_BUFFER, self.capacity, null, usage);
+            }
+        };
+
+        billboard: struct {
+            vao: c_uint,
+            len: usize,
+            position: Buffer,
+            scale: Buffer,
+            color: Buffer,
+
+            const starting_capacity = 50;
+
+            const Self = @This();
+
+            pub fn init(self: *Self) void {
+                self.len = 0;
+
+                gl.GenVertexArrays(1, @ptrCast(&self.vao));
+                gl.BindVertexArray(self.vao);
+                defer gl.BindVertexArray(0);
+
+                // center vec3
+                gl.GenBuffers(1, @ptrCast(&self.position.handle));
+                gl.BindBuffer(gl.ARRAY_BUFFER, self.position.handle);
+
+                gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, @sizeOf(Vec3), 0);
+                gl.EnableVertexAttribArray(0);
+                gl.VertexAttribDivisor(0, 1);
+
+                self.position.capacity = @intCast(starting_capacity * @sizeOf(Vec3));
+
+                gl.BufferData(
+                    gl.ARRAY_BUFFER,
+                    self.position.capacity,
+                    null,
+                    gl.DYNAMIC_DRAW,
+                );
+
+                // color vec3
+                gl.GenBuffers(1, @ptrCast(&self.color.handle));
+                gl.BindBuffer(gl.ARRAY_BUFFER, self.color.handle);
+
+                gl.VertexAttribPointer(1, 3, gl.FLOAT, gl.FALSE, @sizeOf(Vec3), 0);
+                gl.EnableVertexAttribArray(1);
+                gl.VertexAttribDivisor(1, 1);
+
+                self.color.capacity = @intCast(starting_capacity * @sizeOf(Vec3));
+
+                gl.BufferData(
+                    gl.ARRAY_BUFFER,
+                    self.color.capacity,
+                    null,
+                    gl.DYNAMIC_DRAW,
+                );
+
+                // scale float
+                gl.GenBuffers(1, @ptrCast(&self.scale.handle));
+                gl.BindBuffer(gl.ARRAY_BUFFER, self.scale.handle);
+
+                gl.VertexAttribPointer(2, 1, gl.FLOAT, gl.FALSE, @sizeOf(f32), 0);
+                gl.EnableVertexAttribArray(2);
+                gl.VertexAttribDivisor(2, 1);
+
+                self.scale.capacity = @intCast(starting_capacity * @sizeOf(f32));
+
+                gl.BufferData(
+                    gl.ARRAY_BUFFER,
+                    self.scale.capacity,
+                    null,
+                    gl.DYNAMIC_DRAW,
+                );
+            }
+
+            pub fn deinit(self: *Self) void {
+                gl.DeleteVertexArrays(1, @ptrCast(&self.vao));
+
+                gl.DeleteBuffers(1, @ptrCast(&self.position));
+                gl.DeleteBuffers(1, @ptrCast(&self.color));
+                gl.DeleteBuffers(1, @ptrCast(&self.scale));
+            }
+
+            /// deletes the existing data and creates new uninitialized buffers
+            pub fn resize(self: *Self, len: usize) void {
+                self.len = len;
+                self.position.resize(self.len * @sizeOf(Vec3), gl.DYNAMIC_DRAW);
+                self.color.resize(self.len * @sizeOf(Vec3), gl.DYNAMIC_DRAW);
+                self.scale.resize(self.len * @sizeOf(f32), gl.DYNAMIC_DRAW);
+            }
+
+            pub fn setPositions(self: *Self, values: []const Vec3) void {
+                std.debug.assert(values.len > 0 and values.len <= self.len);
+
+                gl.BindBuffer(gl.ARRAY_BUFFER, self.position.handle);
+                defer gl.BindBuffer(gl.ARRAY_BUFFER, 0);
+
+                gl.BufferSubData(
+                    gl.ARRAY_BUFFER,
+                    0,
+                    self.position.capacity,
+                    @ptrCast(values),
+                );
+            }
+
+            pub fn setColors(self: *Self, values: []const Vec3) void {
+                std.debug.assert(values.len > 0 and values.len <= self.len);
+
+                gl.BindBuffer(gl.ARRAY_BUFFER, self.color.handle);
+                defer gl.BindBuffer(gl.ARRAY_BUFFER, 0);
+
+                gl.BufferSubData(
+                    gl.ARRAY_BUFFER,
+                    0,
+                    self.color.capacity,
+                    @ptrCast(values),
+                );
+            }
+
+            pub fn setScales(self: *Self, values: []const f32) void {
+                std.debug.assert(values.len > 0 and values.len <= self.len);
+
+                gl.BindBuffer(gl.ARRAY_BUFFER, self.scale.handle);
+                defer gl.BindBuffer(gl.ARRAY_BUFFER, 0);
+
+                gl.BufferSubData(
+                    gl.ARRAY_BUFFER,
+                    0,
+                    self.scale.capacity,
+                    @ptrCast(values),
+                );
+            }
+        },
+    };
+    alloc: Allocator,
     shaders: Shaders,
     camera: *Camera,
     user_shaders: *StringHashMap(*Shader),
-    cube_model: Model,
     rect_mesh: Mesh,
+    cube_model: *Model,
+
+    buffers: Buffers,
+    billboards: std.MultiArrayList(Billboard),
 };
 
 var state: State = undefined;
 
 pub fn init(allocator: Allocator) void {
-    state.allocator = allocator;
+    state.alloc = allocator;
+    state.billboards = .empty;
     initShaders();
     initModels();
+    initBuffers();
+    gl.PointSize(10);
     state.user_shaders = engine.userShaders();
 }
 
 pub fn deinit() void {
     deinitModels();
     deinitShaders();
+    deinitBuffers();
+    state.billboards.deinit(state.alloc);
 }
 
 pub fn initModels() void {
-    state.cube_model = Model.init(
-        state.allocator,
-        fs.modelPath("cube.glb"),
-    );
+    state.cube_model = engine.loadModel(fs.modelPath("cube.glb"));
     initRect();
 }
 
-const Vertex = engine.Vertex;
+fn initBuffers() void {
+    state.buffers.billboard.init();
+}
+
+/// update buffers before rendering
+fn updateBuffers() void {
+    const slice = state.billboards.slice();
+    if (slice.len > 0) {
+        const bb = &state.buffers.billboard;
+        if (slice.len != bb.len) {
+            bb.resize(slice.len);
+        }
+        bb.setPositions(slice.items(.position));
+        bb.setColors(slice.items(.color));
+        bb.setScales(slice.items(.scale));
+    }
+}
+
+fn deinitBuffers() void {
+    state.buffers.billboard.deinit();
+}
+
 fn initRect() void {
     const vertices = [_]Vertex{
         .fromPos(.init(0.5, 0.5, 0)),
@@ -82,7 +256,7 @@ fn initRect() void {
         1, 2, 3,
     };
 
-    state.rect_mesh = .init(state.allocator);
+    state.rect_mesh = .init(state.alloc);
     state
         .rect_mesh
         .vertex_buffer
@@ -97,14 +271,13 @@ fn initRect() void {
     state.rect_mesh.sendData();
 }
 
-pub fn deinitModels() void {
-    state.cube_model.deinit();
+fn deinitModels() void {
     state.rect_mesh.deinit();
 }
 
 fn initShaders() void {
     state.shaders.basic_mesh = Shader.init(
-        state.allocator,
+        state.alloc,
         fs.shaderPath("basic_mesh.vert"),
         fs.shaderPath("basic_mesh.frag"),
     ) catch {
@@ -112,7 +285,7 @@ fn initShaders() void {
     };
     engine.addShader("basic_mesh", &state.shaders.basic_mesh);
     state.shaders.basic_textured_mesh = Shader.init(
-        state.allocator,
+        state.alloc,
         fs.shaderPath("basic_textured_mesh.vert"),
         fs.shaderPath("basic_textured_mesh.frag"),
     ) catch {
@@ -121,7 +294,7 @@ fn initShaders() void {
     engine.addShader("basic_textured_mesh", &state.shaders.basic_textured_mesh);
 
     state.shaders.light_mesh = Shader.init(
-        state.allocator,
+        state.alloc,
         fs.shaderPath("light_mesh.vert"),
         fs.shaderPath("light_mesh.frag"),
     ) catch {
@@ -130,7 +303,7 @@ fn initShaders() void {
     engine.addShader("light_mesh", &state.shaders.light_mesh);
 
     state.shaders.light_textured_mesh = Shader.init(
-        state.allocator,
+        state.alloc,
         fs.shaderPath("light_textured_mesh.vert"),
         fs.shaderPath("light_textured_mesh.frag"),
     ) catch {
@@ -139,7 +312,7 @@ fn initShaders() void {
     engine.addShader("light_textured_mesh", &state.shaders.light_textured_mesh);
 
     state.shaders.skybox = Shader.init(
-        state.allocator,
+        state.alloc,
         fs.shaderPath("skybox.vert"),
         fs.shaderPath("skybox.frag"),
     ) catch {
@@ -148,7 +321,7 @@ fn initShaders() void {
     engine.addShader("skybox", &state.shaders.skybox);
 
     state.shaders.wireframe = Shader.init(
-        state.allocator,
+        state.alloc,
         fs.shaderPath("wireframe.vert"),
         fs.shaderPath("wireframe.frag"),
     ) catch {
@@ -157,13 +330,22 @@ fn initShaders() void {
     engine.addShader("wireframe", &state.shaders.wireframe);
 
     state.shaders.line = Shader.init(
-        state.allocator,
+        state.alloc,
         fs.shaderPath("line.vert"),
         fs.shaderPath("line.frag"),
     ) catch {
         @panic("failed to load shader");
     };
     engine.addShader("line", &state.shaders.wireframe);
+
+    state.shaders.billboard = Shader.init(
+        state.alloc,
+        fs.shaderPath("billboard.vert"),
+        fs.shaderPath("billboard.frag"),
+    ) catch {
+        @panic("failed to load shader");
+    };
+    engine.addShader("billboard", &state.shaders.billboard);
 }
 
 pub fn deinitShaders() void {
@@ -175,7 +357,9 @@ pub fn deinitShaders() void {
 
 pub fn startFrame() void {}
 
-pub fn endFrame() void {}
+pub fn endFrame() void {
+    state.billboards.clearRetainingCapacity();
+}
 
 pub fn render() void {
     state.camera = engine.camera();
@@ -184,7 +368,11 @@ pub fn render() void {
     const proj = state.camera.getPerspectiveMatrix();
     setCameraMatrices(&view, &proj);
 
+    renderLights(engine.scene());
+
+    updateBuffers();
     renderActors();
+    renderBillboards();
 
     if (!engine.scene()._skybox_hidden) {
         renderSkybox(&engine.scene().skybox);
@@ -193,17 +381,24 @@ pub fn render() void {
 
 fn setCameraMatrices(view: *const Mat4, proj: *const Mat4) void {
     // all renderer shaders get added to user_shaders in initShaders
-    var iter = state.user_shaders.valueIterator();
-    while (iter.next()) |v| {
+    var iter = state.user_shaders.iterator();
+    while (iter.next()) |en| {
+        const v = en.value_ptr;
+        const k = en.key_ptr.*;
+        _ = k; // autofix
+
         const shader = v.*;
         shader.use();
         // TODO: figure out a better way to do this
         // maybe another ArrayList of shaders that need camera matrices?
+        // log.info("current shader: {s}", .{k});
         if (shader.hasUniform("view")) {
             shader.setMat4("view", view);
+            debug.checkGlError();
         }
         if (shader.hasUniform("projection")) {
             shader.setMat4("projection", proj);
+            debug.checkGlError();
         }
     }
 }
@@ -220,7 +415,27 @@ fn renderActors() void {
     }
 }
 
-pub fn renderActor(actor: *const Actor) void {
+fn renderBillboards() void {
+    if (state.billboards.len == 0) return;
+    const buffers = &state.buffers.billboard;
+    gl.BindVertexArray(buffers.vao);
+    defer gl.BindVertexArray(0);
+    state.shaders.billboard.use();
+
+    const cam = engine.camera();
+    const shader = &state.shaders.billboard;
+    shader.setVec3("cam_right", cam.right);
+    shader.setVec3("cam_up", cam.up);
+
+    gl.DrawArraysInstanced(
+        gl.TRIANGLES,
+        0,
+        @intCast(6 * buffers.len),
+        @intCast(buffers.len),
+    ); // 6 vertices per quad (two tris)
+}
+
+fn renderActor(actor: *const Actor) void {
     const render_item = &actor.render_item;
     const mat = &render_item.material;
     if (render_item.hidden) return;
@@ -234,35 +449,33 @@ pub fn renderActor(actor: *const Actor) void {
     if (mat.shader) |s| {
         shader = s;
         shader.use();
-    } else {
-        if (scene.hasLights()) {
-            if (mat.hasDiffuseTextures()) {
-                shader = &state.shaders.light_textured_mesh;
-                // sendLightData calls shader.use
-                sendLightData(shader);
-                sendTextureData(mat, shader);
-                shader.setMat3(
-                    "inverse_model",
-                    &model.inverse().transpose().toMat3(),
-                );
-                shader.setFloat("material.shininess", mat.shininess);
-            } else {
-                shader = &state.shaders.light_mesh;
-                shader.use();
-                shader.setMat3(
-                    "inverse_model",
-                    &model.inverse().transpose().toMat3(),
-                );
-                shader.setFloat("material.shininess", mat.shininess);
-            }
+    } else if (scene.hasLights()) {
+        if (mat.hasDiffuseTextures()) {
+            shader = &state.shaders.light_textured_mesh;
+            // sendLightData calls shader.use
+            sendLightData(shader);
+            sendTextureData(mat, shader);
+            shader.setMat3(
+                "inverse_model",
+                &model.inverse().transpose().toMat3(),
+            );
+            shader.setFloat("material.shininess", mat.shininess);
         } else {
-            if (mat.hasDiffuseTextures()) {
-                shader = &state.shaders.basic_textured_mesh;
-                sendTextureData(mat, shader);
-            } else {
-                shader = &state.shaders.basic_mesh;
-                shader.use();
-            }
+            shader = &state.shaders.light_mesh;
+            shader.use();
+            shader.setMat3(
+                "inverse_model",
+                &model.inverse().transpose().toMat3(),
+            );
+            shader.setFloat("material.shininess", mat.shininess);
+        }
+    } else {
+        if (mat.hasDiffuseTextures()) {
+            shader = &state.shaders.basic_textured_mesh;
+            sendTextureData(mat, shader);
+        } else {
+            shader = &state.shaders.basic_mesh;
+            shader.use();
         }
     }
 
@@ -285,22 +498,22 @@ fn sendTextureData(mat: *const Material, shader: *Shader) void {
     while (i < mat.diffuseTextureCount()) : (i += 1) {
         mat.diffuse_textures.items[i].bindSlot(i);
         const str = std.fmt.allocPrintZ(
-            state.allocator,
+            state.alloc,
             "material.texture_diffuse{}",
             .{i + 1},
         ) catch unreachable;
-        defer state.allocator.free(str);
+        defer state.alloc.free(str);
         shader.setSampler(@ptrCast(str), i);
     }
     i = 0;
     while (i < mat.specularTextureCount()) : (i += 1) {
         mat.specular_textures.items[i].bindSlot(i);
         const str = std.fmt.allocPrintZ(
-            state.allocator,
+            state.alloc,
             "material.texture_specular{}",
             .{i + 1},
         ) catch unreachable;
-        defer state.allocator.free(str);
+        defer state.alloc.free(str);
         shader.setSampler(@ptrCast(str), i);
     }
 }
@@ -319,36 +532,36 @@ pub fn sendLightData(shader: *Shader) void {
     var i: usize = 0;
     while (p_iter.next()) |light| : (i += 1) {
         const name = std.fmt.allocPrintZ(
-            state.allocator,
+            state.alloc,
             "point_lights[{}]",
             .{i},
         ) catch unreachable;
-        defer state.allocator.free(name);
-        light.value_ptr.*.sendToShader(state.allocator, name, shader);
+        defer state.alloc.free(name);
+        light.value_ptr.*.sendToShader(state.alloc, name, shader);
     }
 
     var s_iter = scene.spot_lights.iterator();
     i = 0;
     while (s_iter.next()) |light| : (i += 1) {
         const name = std.fmt.allocPrintZ(
-            state.allocator,
+            state.alloc,
             "spot_lights[{}]",
             .{i},
         ) catch unreachable;
-        defer state.allocator.free(name);
-        light.value_ptr.*.sendToShader(state.allocator, name, shader);
+        defer state.alloc.free(name);
+        light.value_ptr.*.sendToShader(state.alloc, name, shader);
     }
 
     var d_iter = scene.dir_lights.iterator();
     i = 0;
     while (d_iter.next()) |light| : (i += 1) {
         const name = std.fmt.allocPrintZ(
-            state.allocator,
+            state.alloc,
             "dir_lights[{}]",
             .{i},
         ) catch unreachable;
-        defer state.allocator.free(name);
-        light.value_ptr.*.sendToShader(state.allocator, name, shader);
+        defer state.alloc.free(name);
+        light.value_ptr.*.sendToShader(state.alloc, name, shader);
     }
 }
 
@@ -436,7 +649,7 @@ fn renderSkybox(skybox: *Skybox) void {
 }
 
 pub fn cubeModel() *Model {
-    return &state.cube_model;
+    return state.cube_model;
 }
 
 pub fn rectMesh() *Mesh {
@@ -454,7 +667,7 @@ pub fn drawRay(ray: *const math.Ray, t: f32) void {
     const p1 = ray.origin;
     const p2 = ray.at(t);
 
-    var vb = VertexBuffer.init(state.allocator);
+    var vb = VertexBuffer.init(state.alloc);
     defer vb.deinit();
     vb.vertices.appendSlice(&.{
         .fromPos(p1),
@@ -469,7 +682,6 @@ pub fn drawRay(ray: *const math.Ray, t: f32) void {
     gl.DrawArrays(gl.LINES, 0, 2);
 }
 
-const Color = engine.Color;
 pub fn drawQuad(
     tf: *const Transform,
     color: Color,
@@ -492,4 +704,56 @@ pub fn drawQuad(
     }
 
     renderMesh(&state.rect_mesh);
+}
+
+fn renderLights(scene: *const engine.Scene) void {
+    const light_scale = 0.3;
+
+    var point_iter = scene.point_lights.iterator();
+    while (point_iter.next()) |kv| {
+        const light = kv.value_ptr.*;
+
+        if (!light.hidden) {
+            drawBillboard(.{
+                .position = light.position,
+                .color = light.diffuse.clampedVec3(),
+                .scale = light_scale,
+            });
+        }
+    }
+
+    var spot_iter = scene.spot_lights.iterator();
+    while (spot_iter.next()) |kv| {
+        const light = kv.value_ptr.*;
+        if (!light.hidden) {
+            drawBillboard(.{
+                .position = light.position,
+                .color = light.diffuse.clampedVec3(),
+                .scale = light_scale,
+            });
+        }
+    }
+
+    var dir_iter = scene.dir_lights.iterator();
+    while (dir_iter.next()) |kv| {
+        const light = kv.value_ptr.*;
+        if (!light.hidden) {
+            drawBillboard(.{
+                .position = light.position,
+                .color = light.diffuse.clampedVec3(),
+                .scale = light_scale,
+            });
+        }
+    }
+}
+
+pub fn drawBillboard(bb: Billboard) void {
+    state.billboards.append(state.alloc, bb) catch unreachable;
+}
+
+pub fn drawBillboards(billboards: []const Billboard) void {
+    state.billboards.ensureTotalCapacity(state.alloc, billboards.len) catch unreachable;
+    for (billboards) |bb| {
+        state.billboards.appendAssumeCapacity(bb);
+    }
 }

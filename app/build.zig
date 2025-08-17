@@ -7,18 +7,17 @@ pub fn build(b: *std.Build) void {
     const name = "App";
     const root_source_file = b.path("src/main.zig");
 
-    const engine = b.dependency("engine", .{
-        .target = target,
-        .optimize = optimize,
-    });
-    const engine_mod = engine.module("engine");
-
     const exe_mod = b.createModule(.{
         .root_source_file = root_source_file,
         .target = target,
         .optimize = optimize,
     });
 
+    const engine = b.dependency("engine", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    const engine_mod = engine.module("engine");
     exe_mod.addImport("engine", engine_mod);
 
     const exe = b.addExecutable(.{

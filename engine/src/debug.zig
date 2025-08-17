@@ -2,9 +2,13 @@ const std = @import("std");
 const gl = @import("gl");
 const engine = @import("engine.zig");
 pub const log = @import("log.zig");
+const builtin = @import("builtin");
 
 /// panics when an error is found
+/// does nothing on non-debug builds
 pub fn checkGlError() void {
+    if (builtin.mode != .Debug) return;
+
     var had_error = false;
     var err: u32 = gl.GetError();
     while (err != gl.NO_ERROR) : (err = gl.GetError()) {
@@ -42,6 +46,6 @@ pub fn assert(
         defer alloc.free(err);
         log.err("{s}", .{err});
         std.debug.dumpCurrentStackTrace(0);
-        @panic("Assertion failed");
+        @panic(err);
     }
 }

@@ -35,10 +35,6 @@
             .url = "https://pkg.machengine.org/mach-freetype/d63efa5534c17f3a12ed3d327e0ad42a64adc20a.tar.gz",
             .hash = "1220adfccce3dbc4e4fa8650fdaec110a676f6b8a1462ed6ef422815207f8288e9d2",
         },
-        .zclay = .{
-            .url = "git+https://github.com/johan0A/clay-zig-bindings.git#c439f254d974d4235be27157e530836e854d312c",
-            .hash = "zclay-0.0.0-Ej1rkMHHAABluPgeTKZu3gBCSkDfD1NYXsUbEvJZ6kYL",
-        },
         .cimgui = .{
             .url = "git+https://github.com/floooh/dcimgui.git#387dd2b3dcbb3380ad35b8efa54624564ecfd759",
             .hash = "cimgui-0.1.0-44ClkVShhQApVaApfb_mhXPpp08yqiB3zIBR0WYjbwwI",

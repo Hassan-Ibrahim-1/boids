@@ -52,8 +52,7 @@ pub fn createActor(self: *Scene, name: []const u8) *Actor {
     actor.* = Actor.init(self.allocator);
     actor.id = generateId();
     const alloc = self.name_arena.allocator();
-    const n = alloc.alloc(u8, name.len) catch unreachable;
-    @memcpy(n, name);
+    const n = alloc.dupe(u8, name) catch unreachable;
     self.actors.put(n, actor) catch unreachable;
     return actor;
 }
