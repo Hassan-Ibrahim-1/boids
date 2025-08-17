@@ -84,8 +84,10 @@ fn init() !void {
     try boid_renderer.init(state.alloc, &state.boids);
 }
 
+const boid_count = 1000;
+
 fn createBoids() !void {
-    for (0..400) |i| {
+    for (0..boid_count) |i| {
         const name = try std.fmt.allocPrint(state.alloc, "boid {}", .{i});
         defer state.alloc.free(name);
         var boid = Boid.init(state.alloc, name);
