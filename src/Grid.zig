@@ -212,7 +212,6 @@ pub fn getCellNeighbours(self: *Self, idx: usize) [8]?*Cell {
                 log.info("less than 0", .{});
                 neighbour_idx += @intCast(self.cells.items.len);
             } else if (neighbour_idx >= self.cells.items.len) {
-                log.info("greater than items.len", .{});
                 neighbour_idx -= @intCast(self.cells.items.len);
             }
             neighbours[i] = &self.cells.items[@intCast(neighbour_idx)];
